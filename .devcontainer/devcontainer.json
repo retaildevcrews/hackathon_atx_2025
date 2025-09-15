@@ -118,5 +118,5 @@
       }
     },
     "onCreateCommand": ".devcontainer/oncreate.zsh",
-    "postCreateCommand": "bash -c 'grep -q \"Poetry auto-activate\" ~/.zshrc || echo \"source /workspaces/hackathon_atx_2025/.devcontainer/poetry-auto-activate.zsh\" >> ~/.zshrc'"
+    "postCreateCommand": ""
   }
