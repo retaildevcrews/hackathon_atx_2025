@@ -1,9 +1,10 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import criteria
+from app.routes import criteria, rubrics
 from app.utils.db import Base, engine
-from app.models import criteria_orm
+from app.models import criteria_orm  # ensure import side effects
+from app.models import rubric_orm  # ensure rubric table
 
 app = FastAPI()
 
@@ -20,6 +21,7 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 app.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
+app.include_router(rubrics.router, prefix="/rubrics", tags=["rubrics"])
 
 @app.get("/")
 def root():
