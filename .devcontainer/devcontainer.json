@@ -1,0 +1,122 @@
+{
+    "name": "starbucks-menu-devcontainer",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "image": "mcr.microsoft.com/devcontainers/python:3-bookworm", // pinning an OS version
+    "features": {
+      "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.13"
+    },
+      "ghcr.io/devcontainers/features/azure-cli:1": {},
+      "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+      "ghcr.io/devcontainers-extra/features/poetry:latest": {},
+      "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
+        "plugins": "python poetry gitfast git-extras command-not-found colorize colored-man-pages"
+      },
+      "ghcr.io/devcontainers-extra/features/bin:1": {}, // for any binary release installation
+      "ghcr.io/devcontainers-extra/features/neovim-apt-get:1": {},
+      "ghcr.io/devcontainers/features/node:1": {
+        "version": "lts",
+        "installYarn": true,
+        "installPnpm": true
+      },
+      "git-lfs": "latest"
+    },
+    // set container specific settings
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "[markdown]": {
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "modificationsIfAvailable",
+            "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+          },
+          "files.associations": {
+            ".env*": "dotenv",
+            ".credentials*": "credentials"
+          },
+          "github.copilot.enable": {
+              "*": true,
+              // ...
+              "dotenv": false,
+              "credentials":false
+          },
+          // This Glob should be the same as .github/workflows/linter.yaml Markdownlint
+          "markdownlint.lintWorkspaceGlobs": [
+            "!**/.git",
+            "!**/.github/",
+            "!CHANGELOG.md",
+            "!CONTRIBUTING.md",
+            "!LICENSE"
+          ],
+          "terminal.integrated.defaultProfile.linux": "zsh",
+          "editor.inlineSuggest.enabled": true,
+          "editor.copyWithSyntaxHighlighting": false,
+          "editor.wordWrap": "on",
+          "editor.linkedEditing": true,
+          "editor.renderWhitespace": "selection",
+          "editor.renderControlCharacters": true,
+          "editor.rulers": [
+            79,
+            118
+          ],
+          "search.exclude": {
+            "**/node_modules": true,
+            "**/bower_components": true,
+            "**/.pytest_cache*": true,
+            "**/__pycache__": true,
+            "**/.mypy_cache": true
+          },
+          "files.exclude": {
+            "**/.pytest_cache*": true,
+            "**/.mypy_cache": true,
+            "**/__pycache__": true
+          },
+          "editor.guides.highlightActiveIndentation": true,
+          "editor.guides.highlightActiveBracketPair": true,
+          "editor.bracketPairColorization.enabled": true,
+          "editor.guides.bracketPairs": "active",
+          "files.trimTrailingWhitespace": true,
+          "files.trimFinalNewlines": true,
+          "files.insertFinalNewline": true,
+          "shellcheck.enable": true,
+          "shellcheck.enableQuickFix": true,
+          "shellcheck.ignoreFileSchemes": [
+            "git",
+            "gitfs",
+            "output",
+            "test"
+          ],
+          "[jsonc]": {
+            "editor.defaultFormatter": "vscode.json-language-features"
+          }
+        },
+        // Install extensions
+        "extensions": [
+            "stkb.rewrap",
+            "redhat.vscode-yaml",
+            "davidanson.vscode-markdownlint",
+            "visualstudioexptteam.vscodeintellicode",
+            "humao.rest-client",
+            "eamodio.gitlens",
+            "gruntfuggly.todo-tree",
+            "timonwong.shellcheck",
+            "bierner.markdown-mermaid",
+            "github.vscode-github-actions",
+            "pomdtr.excalidraw-editor",
+            "tamasfe.even-better-toml",
+            "ms-python.python",
+            "ms-python.debugpy",
+            "kevinrose.vsc-python-indent",
+            "donjayamanne.python-environment-manager",
+            "njpwerner.autodocstring",
+            "ms-toolsai.vscode-ai",
+            "ms-toolsai.jupyter",
+            "qwtel.sqlite-viewer",
+            "GitHub.copilot",
+            "GitHub.copilot-chat"
+        ]
+      }
+    },
+    "onCreateCommand": ".devcontainer/oncreate.zsh",
+    "postCreateCommand": "bash -c 'grep -q \"Poetry auto-activate\" ~/.zshrc || echo \"source /workspaces/hackathon_atx_2025/.devcontainer/poetry-auto-activate.zsh\" >> ~/.zshrc'"
+  }
