@@ -112,15 +112,66 @@ class Evaluator:
                 try:
                     test_case = json.loads(line)
                     # Validate required fields
-                    required_fields = ["document_id", "document_text", "criteria"]
+                    required_fields = ["document_id", "document_text"]
                     for field in required_fields:
                         if field not in test_case:
                             raise ValueError(f"Missing required field: {field}")
+
+                    # Load criteria from rubric file if specified
+                    if "rubric_file" in test_case:
+                        test_case["criteria"] = self._load_rubric(test_case["rubric_file"], dataset_path)
+                    elif "criteria" not in test_case:
+                        raise ValueError("Either 'criteria' or 'rubric_file' must be specified")
+
                     yield test_case
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON on line {line_num}: {e}")
                 except ValueError as e:
                     logger.error(f"Invalid test case on line {line_num}: {e}")
+
+    def _load_rubric(self, rubric_file: str, dataset_path: str) -> List[Dict[str, Any]]:
+        """Load criteria from a rubric file.
+
+        Args:
+            rubric_file: Name of the rubric file (e.g., 'tv_rubric.json')
+            dataset_path: Path to the dataset file (used to find rubric directory)
+
+        Returns:
+            List of criteria dictionaries
+        """
+        # Find rubric file in the same directory as the dataset
+        dataset_dir = Path(dataset_path).parent
+        rubric_path = dataset_dir / rubric_file
+
+        if not rubric_path.exists():
+            raise FileNotFoundError(f"Rubric file not found: {rubric_path}")
+
+        try:
+            with open(rubric_path, 'r', encoding='utf-8') as f:
+                rubric_data = json.load(f)
+
+            # Convert rubric format to criteria format expected by judge
+            if "criteria" in rubric_data:
+                criteria = []
+                for criterion in rubric_data["criteria"]:
+                    # Convert weight from percentage or keep as float
+                    weight = criterion.get("weight", 1.0)
+                    if isinstance(weight, str) and weight.endswith("%"):
+                        weight = float(weight.rstrip("%")) / 100.0
+
+                    criteria.append({
+                        "criterion_id": criterion.get("criterion_id", criterion.get("name", "")),
+                        "description": criterion.get("description", ""),
+                        "weight": weight
+                    })
+                return criteria
+            else:
+                raise ValueError(f"Invalid rubric format in {rubric_file}: missing 'criteria' field")
+
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in rubric file {rubric_file}: {e}")
+        except Exception as e:
+            raise ValueError(f"Error loading rubric file {rubric_file}: {e}")
 
     def _call_agent(self, test_case: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Call the agent API to get evaluation output."""

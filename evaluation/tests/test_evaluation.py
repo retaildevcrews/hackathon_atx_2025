@@ -98,7 +98,7 @@ class TestEvaluator:
         assert evaluator.agent_endpoint == "http://test.com"
 
     def test_load_dataset_success(self):
-        """Test successful dataset loading."""
+        """Test successful dataset loading with embedded criteria."""
         # Create temporary dataset file
         test_data = [
             {
@@ -120,13 +120,62 @@ class TestEvaluator:
 
         try:
             evaluator = Evaluator()
-            dataset = list(evaluator._load_dataset(temp_path))
+            test_cases = list(evaluator._load_dataset(temp_path))
 
-            assert len(dataset) == 2
-            assert dataset[0]["document_id"] == "doc1"
-            assert dataset[1]["document_id"] == "doc2"
+            assert len(test_cases) == 2
+            assert test_cases[0]["document_id"] == "doc1"
+            assert test_cases[1]["document_id"] == "doc2"
+            assert len(test_cases[0]["criteria"]) == 1
+            assert test_cases[0]["criteria"][0]["criterion_id"] == "test1"
         finally:
             os.unlink(temp_path)
+
+    def test_load_dataset_with_rubric_file(self):
+        """Test dataset loading with rubric file references."""
+        # Create temporary rubric file
+        rubric_data = {
+            "rubric_name": "Test Rubric",
+            "domain": "test",
+            "version": "1.0",
+            "criteria": [
+                {
+                    "criterion_id": "test_criterion",
+                    "description": "Test criterion description",
+                    "weight": 1.0
+                }
+            ]
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as rubric_f:
+            json.dump(rubric_data, rubric_f)
+            rubric_path = rubric_f.name
+
+        # Create temporary dataset file with rubric reference
+        test_data = [
+            {
+                "document_id": "doc1",
+                "document_text": "Test document 1",
+                "rubric_file": os.path.basename(rubric_path)
+            }
+        ]
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False, dir=os.path.dirname(rubric_path)) as dataset_f:
+            for item in test_data:
+                dataset_f.write(json.dumps(item) + '\n')
+            dataset_path = dataset_f.name
+
+        try:
+            evaluator = Evaluator()
+            test_cases = list(evaluator._load_dataset(dataset_path))
+
+            assert len(test_cases) == 1
+            assert test_cases[0]["document_id"] == "doc1"
+            assert "criteria" in test_cases[0]
+            assert len(test_cases[0]["criteria"]) == 1
+            assert test_cases[0]["criteria"][0]["criterion_id"] == "test_criterion"
+        finally:
+            os.unlink(rubric_path)
+            os.unlink(dataset_path)
 
     def test_load_dataset_missing_file(self):
         """Test dataset loading with missing file."""
