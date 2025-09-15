@@ -24,3 +24,7 @@ app.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
 @app.get("/")
 def root():
     return {"message": "Criteria API is running"}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}

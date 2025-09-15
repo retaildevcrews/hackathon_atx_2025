@@ -1,14 +1,20 @@
 import React from 'react';
-import { CriteriaList } from '../components/CriteriaList';
-import { CreateCriteriaForm } from '../components/CreateCriteriaForm';
+import { Container, AppBar, Toolbar, Typography, Box } from '@mui/material';
+import { CriteriaTable } from '../components/CriteriaTable';
 
 export const App: React.FC = () => {
   return (
-    <div style={{ fontFamily: 'system-ui', margin: '1rem 2rem' }}>
-      <h1>Criteria Manager</h1>
-      <CreateCriteriaForm />
-      <hr />
-      <CriteriaList />
-    </div>
+    <>
+      <AppBar position="static" color="primary" enableColorOnDark>
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>Criteria Manager</Typography>
+        </Toolbar>
+      </AppBar>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
+        <Box>
+          <CriteriaTable />
+        </Box>
+      </Container>
+    </>
   );
 };
