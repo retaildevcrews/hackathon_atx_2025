@@ -20,7 +20,7 @@ Each test case contains a document and criteria to evaluate. No ground truth lab
       "weight": 1.0
     },
     {
-      "criterion_id": "completeness", 
+      "criterion_id": "completeness",
       "description": "All required sections must be present and complete",
       "weight": 1.0
     }
@@ -30,7 +30,7 @@ Each test case contains a document and criteria to evaluate. No ground truth lab
 
 ## Agent Output Schema
 
-Expected JSON output from the evaluation agent:
+Expected JSON output from the evaluation agent (note: agent only receives relevant chunks, not full document):
 
 ```json
 {
@@ -42,22 +42,29 @@ Expected JSON output from the evaluation agent:
       "criterion_id": "security_compliance",
       "score": 90.0,
       "confidence": 0.85,
-      "reasoning": "Document includes comprehensive security protocols...",
+      "reasoning": "Based on retrieved chunks, document includes comprehensive security protocols...",
       "supporting_evidence": [
         {
           "text": "Security protocols are implemented...",
-          "start_char": 1250,
-          "end_char": 1280
+          "chunk_id": "chunk_003",
+          "relevance_score": 0.92
         }
       ],
-      "pass": true
+      "pass": true,
+      "chunks_used": ["chunk_001", "chunk_003", "chunk_007"]
     }
   ],
-  "retrieval_chunks": [
+  "retrieval_summary": {
+    "total_chunks_retrieved": 8,
+    "chunks_used_in_evaluation": 5,
+    "retrieval_quality_estimate": 0.87
+  },
+  "input_chunks": [
     {
       "chunk_id": "chunk_001",
-      "text": "Relevant document section...",
-      "relevance_score": 0.92
+      "text": "Relevant document section that was fed to agent...",
+      "relevance_score": 0.92,
+      "used_in_criteria": ["security_compliance", "data_protection"]
     }
   ]
 }
@@ -65,7 +72,7 @@ Expected JSON output from the evaluation agent:
 
 ## Judge Output Schema
 
-LLM Judge evaluation of agent performance:
+LLM Judge evaluation of agent performance (evaluating chunk-based reasoning):
 
 ```json
 {
@@ -81,11 +88,20 @@ LLM Judge evaluation of agent performance:
       "accuracy": "high",
       "reasoning_quality": "good",
       "evidence_relevance": "high",
-      "judge_comments": "Agent correctly identified security measures but missed some edge cases...",
-      "score_justification": "Agent's score of 90 is slightly optimistic; 85 more appropriate given missing elements"
+      "chunk_utilization": "effective",
+      "retrieval_adequacy": "sufficient",
+      "judge_comments": "Agent correctly identified security measures from retrieved chunks but could have better synthesized information across chunks...",
+      "score_justification": "Agent's score of 90 is slightly optimistic; 85 more appropriate given incomplete chunk coverage",
+      "missing_information": "Agent missed some security details that appear in non-retrieved chunks"
     }
   ],
-  "judge_overall_comments": "Agent performed well overall but could improve evidence selection..."
+  "retrieval_assessment": {
+    "chunk_relevance": "high",
+    "chunk_coverage": "adequate",
+    "missing_critical_info": false,
+    "retrieval_quality_score": 82.0
+  },
+  "judge_overall_comments": "Agent performed well with available chunks but evaluation limited by retrieval scope..."
 }
 ```
 
