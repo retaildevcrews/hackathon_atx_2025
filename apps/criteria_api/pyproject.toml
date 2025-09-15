@@ -3,14 +3,15 @@ name = "criteria_api"
 version = "0.1.0"
 description = "RESTful API for managing criteria using Azure CosmosDB"
 authors = ["Your Name <you@example.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.110.0"
-uuid = "^1.30"
 azure-cosmos = "^4.6.0"
 uvicorn = "^0.29.0"
 python-dotenv = "^1.0.1"
+sqlalchemy = "^2.0.29"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.0.0"
