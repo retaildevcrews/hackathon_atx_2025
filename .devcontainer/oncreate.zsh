@@ -13,6 +13,6 @@ sudo apt-get install -y --no-install-recommends \
 	}
 
 echo "[oncreate] Installing project Python dependencies via Poetry..."
-poetry install --no-root
+# poetry install --no-root
 
 echo "[oncreate] Completed devcontainer setup."
