@@ -310,7 +310,7 @@ class EvaluationMetrics:
             all_issues.extend(criterion_metrics.get("common_issues", []))
 
         if "missing evidence" in all_issues:
-            recommendations.append("Improve evidence retrieval and selection mechanisms.")
+            recommendations.append("Improve evidence selection and analysis mechanisms.")
         if "over-scoring" in all_issues:
             recommendations.append("Calibrate scoring to be more conservative and realistic.")
         if "weak reasoning" in all_issues:

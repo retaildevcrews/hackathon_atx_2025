@@ -81,30 +81,26 @@ class LLMJudge:
         """Get the system prompt for the LLM judge."""
         return """You are an expert evaluator assessing how well an AI agent evaluated a document against specific criteria.
 
-IMPORTANT: The agent only receives RELEVANT CHUNKS from the document (via a retrieval tool), NOT the full document. Your evaluation should account for this limitation.
-
 Your task:
-1. Review the original document, evaluation criteria, and chunks the agent received
-2. Assess whether the agent made good use of the available chunks
-3. Evaluate the agent's reasoning quality given the information it had access to
-4. Consider whether the retrieval tool provided adequate chunks for evaluation
-5. Provide scores and detailed feedback for each criterion
+1. Review the original document and evaluation criteria
+2. Assess whether the agent's evaluation is accurate and well-reasoned
+3. Evaluate the quality of the agent's reasoning and evidence selection
+4. Provide scores and detailed feedback for each criterion
 
 Key evaluation dimensions:
-- **Accuracy**: How well did the agent evaluate criteria based on available chunks?
-- **Reasoning Quality**: Is the agent's reasoning sound given the chunk information?
-- **Chunk Utilization**: Did the agent effectively use the retrieved chunks?
+- **Accuracy**: How well did the agent evaluate criteria based on the document?
+- **Reasoning Quality**: Is the agent's reasoning sound and well-structured?
 - **Evidence Relevance**: Are cited evidence snippets appropriate and well-selected?
-- **Retrieval Adequacy**: Were the retrieved chunks sufficient for proper evaluation?
+- **Score Appropriateness**: Are the assigned scores justified by the evidence?
 
 Scoring guidelines:
-- 90-100: Excellent evaluation, optimal use of chunks, strong reasoning, accurate scoring
-- 80-89: Good evaluation, effective chunk usage, mostly accurate reasoning
-- 70-79: Fair evaluation, adequate chunk usage, some reasoning gaps
-- 60-69: Poor evaluation, ineffective chunk usage, significant reasoning issues
-- 0-59: Very poor evaluation, major errors in chunk interpretation
+- 90-100: Excellent evaluation with strong reasoning and accurate scoring
+- 80-89: Good evaluation with effective analysis and mostly accurate reasoning
+- 70-79: Fair evaluation with adequate reasoning but some gaps
+- 60-69: Poor evaluation with weak reasoning and significant issues
+- 0-59: Very poor evaluation with major errors in analysis
 
-Be objective and consider that the agent's limitations may stem from inadequate chunk retrieval rather than poor reasoning."""
+Be objective and provide constructive feedback to help improve the agent's evaluation capabilities."""
 
     def _build_judge_prompt(
         self,
@@ -123,43 +119,27 @@ Be objective and consider that the agent's limitations may stem from inadequate 
             for c in criteria
         ])
 
-        # Extract chunks that were fed to the agent
-        input_chunks = agent_output.get("input_chunks", [])
-        chunks_str = ""
-        if input_chunks:
-            chunks_str = "\n\nChunks Retrieved for Agent:\n---\n"
-            for i, chunk in enumerate(input_chunks[:5]):  # Limit to first 5 chunks
-                chunk_text = chunk.get("text", "")[:500]  # Truncate long chunks
-                relevance = chunk.get("relevance_score", "unknown")
-                chunks_str += f"Chunk {i+1} (relevance: {relevance}):\n{chunk_text}\n\n"
-            if len(input_chunks) > 5:
-                chunks_str += f"... and {len(input_chunks) - 5} more chunks\n"
-            chunks_str += "---\n"
-
-        return f"""Please evaluate this AI agent's document evaluation based on chunks it received:
+        return f"""Please evaluate this AI agent's document evaluation:
 
 {metadata_str}
-Original Document (for your reference - agent did NOT see this full text):
+Original Document:
 ---
-{document_text[:2000]}{'...' if len(document_text) > 2000 else ''}
+{document_text}
 ---
 
 Evaluation Criteria:
 {criteria_str}
-{chunks_str}
-Agent's Output (based only on chunks above):
+
+Agent's Output:
 ---
 {json.dumps(agent_output, indent=2)}
 ---
 
-CRITICAL: The agent only had access to the retrieved chunks shown above, NOT the full document.
-
 Please assess:
-1. How well did the agent evaluate each criterion given the available chunks?
-2. Is the agent's reasoning sound based on the chunk information it had?
-3. Did the agent effectively utilize the retrieved chunks?
-4. Are the evidence snippets relevant and properly cited from the chunks?
-5. Were the retrieved chunks sufficient for proper evaluation? (This affects the agent's ability to perform)
+1. How well did the agent evaluate each criterion based on the document?
+2. Is the agent's reasoning sound and well-structured?
+3. Are the evidence snippets relevant and properly cited?
+4. Are the assigned scores justified by the evidence provided?
 
 Return your evaluation as JSON with this structure:
 {{
@@ -175,20 +155,11 @@ Return your evaluation as JSON with this structure:
       "accuracy": "high|medium|low",
       "reasoning_quality": "excellent|good|fair|poor",
       "evidence_relevance": "high|medium|low",
-      "chunk_utilization": "excellent|good|fair|poor",
-      "retrieval_adequacy": "sufficient|partial|insufficient",
-      "judge_comments": "Detailed feedback on agent's chunk-based evaluation...",
-      "score_justification": "Why this score given available chunks...",
-      "missing_information": "What critical info was missing from chunks (if any)..."
+      "judge_comments": "Detailed feedback on agent's evaluation...",
+      "score_justification": "Why this score was assigned..."
     }}
   ],
-  "retrieval_assessment": {{
-    "chunk_relevance": "high|medium|low",
-    "chunk_coverage": "comprehensive|adequate|limited",
-    "missing_critical_info": true|false,
-    "retrieval_quality_score": 85.0
-  }},
-  "judge_overall_comments": "Overall assessment considering chunk limitations..."
+  "judge_overall_comments": "Overall assessment of the agent's evaluation performance..."
 }}"""
 
     def _validate_judge_output(
@@ -225,11 +196,8 @@ Return your evaluation as JSON with this structure:
                     "accuracy": "unknown",
                     "reasoning_quality": "unknown",
                     "evidence_relevance": "unknown",
-                    "chunk_utilization": "unknown",
-                    "retrieval_adequacy": "unknown",
                     "judge_comments": "Not evaluated by judge",
-                    "score_justification": "Missing from judge output",
-                    "missing_information": "N/A"
+                    "score_justification": "Missing from judge output"
                 })
 
         return judge_output

@@ -196,11 +196,6 @@ class Evaluator:
             if "document_id" not in agent_output:
                 agent_output["document_id"] = test_case["document_id"]
 
-            # Simulate input chunks if not provided by agent (for testing)
-            if "input_chunks" not in agent_output:
-                logger.warning(f"Agent output missing input_chunks for {test_case['document_id']}")
-                agent_output["input_chunks"] = []
-
             return agent_output
 
         except requests.RequestException as e:
