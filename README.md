@@ -63,6 +63,20 @@ User Upload -> Ingestion Layer -> Storage (Blob) -> Extraction & Chunking -> Ind
 																	  |
 														Output APIs / UI / Workflow
 ```
+## High-level Flow (Proposed)
+```mermaid
+flowchart
+    Start([Start: RFP Received])
+    Analyze[/AI Agent analyzes RFP/]
+    Process([Generate Custom Output])
+    UI["Display Output via<br>Custom UI"]
+    Complete([End])
+
+    Start --> Analyze
+    Analyze --> Process
+    Process --> UI
+    UI --> Complete
+```
 
 ### Components
 - Ingestion Service: Validates + stores files; normalizes metadata
