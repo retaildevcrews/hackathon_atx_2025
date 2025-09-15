@@ -4,7 +4,7 @@ This folder holds planning documents for features and improvements, structured t
 
 Conventions (per-feature folders):
 
-- Create a folder per feature: `planning/<component>/yyyy-mm-dd-feature-slug/`
+- Create a folder per feature: `copilot_planning/<component>/yyyy-mm-dd-feature-slug/`
 - Inside each folder:
   - `feature-plan.md` — problem, goals, design, impacted code, tests, rollout
   - `implementation-plan.md` — step-by-step checklist the agent will follow
