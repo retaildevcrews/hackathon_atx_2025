@@ -130,15 +130,13 @@ remediation_hint: "Specify algorithms, key rotation policy, and data at rest/in 
 - Chain-of-thought retention vs. distilled rationale storage
 - Agent tool performance benchmarking
 
-## Roadmap (Hackathon Scope vs Future)
-| Phase | Scope | Status |
-|-------|-------|--------|
-| Day 1 | Repo setup, baseline ingestion flow | Planned |
-| Day 2 | Basic extraction + retrieval prototype | Planned |
-| Day 3 | Rule engine skeleton + sample rules | Planned |
-| Day 4 | LLM analysis + merged insights | Planned |
-| Day 5 | Power Automate webhook + demo script | Planned |
-| Post | UI polish, multi-doc comparison, benchmarking | Future |
+## Roadmap (3-Day Hackathon: Monday–Wednesday)
+| Day | Focus | Outcomes |
+|-----|-------|----------|
+| Monday (Day 1) | Repo setup, minimal ingestion (blob -> status record), rule template seed | Running repo, sample rule template in Cosmos, ingestion status mock |
+| Tuesday (Day 2) | Extraction + chunk + index pipeline, baseline retrieval; start evaluation agent (deterministic + LLM stub) | Indexed sample doc, retrieval working, partial evaluation JSON output |
+| Wednesday (Day 3) | Full evaluation flow (rules + LLM reasoning), UI skeleton for rules & results, refinement + demo prep | End-to-end demo: upload -> evaluate -> view results |
+| Post (Optional) | Multi-doc compare, workflow triggers, cost metrics | Deferred enhancements |
 
 ## Workstreams & Deliverables
 Four coordinated workstreams compose the prototype. Each can progress semi-independently with lightweight contracts between them.
