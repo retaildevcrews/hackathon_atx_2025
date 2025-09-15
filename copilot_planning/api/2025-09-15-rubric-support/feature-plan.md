@@ -1,4 +1,4 @@
-fea# Rubric Support (Criteria API)
+# Rubric Support (Criteria API)
 
 ## Problem
 
