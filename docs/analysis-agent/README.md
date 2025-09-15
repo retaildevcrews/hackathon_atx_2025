@@ -1,9 +1,11 @@
 # Analysis Agent & Structured Evaluation
 
 ## Purpose
+
 Combine deterministic rule checks with LLM reasoning to produce structured evaluation output.
 
 ## High-Level Sequence
+
 1. Request: { documentId, ruleTemplateId }
 2. Fetch rule template from Cosmos.
 3. For each rule/dimension: retrieve relevant chunks (semantic + keyword filter).
@@ -14,6 +16,7 @@ Combine deterministic rule checks with LLM reasoning to produce structured evalu
 8. Persist evaluation record.
 
 ## Output Contract (Draft)
+
 ```jsonc
 {
   "id": "eval_rfp_2025_0042_v1",
@@ -38,6 +41,7 @@ Combine deterministic rule checks with LLM reasoning to produce structured evalu
 ```
 
 ## Tooling (Potential MCP Tools)
+
 - retrieval.search
 - rules.loadTemplate
 - rules.evaluateDeterministic
@@ -46,16 +50,19 @@ Combine deterministic rule checks with LLM reasoning to produce structured evalu
 - evaluations.persist
 
 ## Error Handling
+
 - Partial failure isolation (continue other rules)
 - Mark failed rules with status=error and reason
 - Retry limited to transient retrieval / LLM timeouts
 
 ## Open Questions
+
 - Streaming intermediate findings to UI?
 - Should rules express dependency graph?
 - Adaptive prompt size strategies?
 
 ## Next Steps
+
 - Define deterministic rule evaluator interface
 - Draft prompt templates per rule type
 - Implement evaluation aggregator prototype

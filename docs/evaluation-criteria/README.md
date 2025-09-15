@@ -1,9 +1,11 @@
 # Evaluation Criteria Authoring & Rule Store
 
 ## Purpose
+
 Provide a way to define, version, and retrieve rule templates used to evaluate documents.
 
 ## Core Concerns
+
 - Template schema (rules, weights, dimensions)
 - Versioning & immutability
 - Cosmos DB data model & partitioning
@@ -11,6 +13,7 @@ Provide a way to define, version, and retrieve rule templates used to evaluate d
 - Validation & linting of rule definitions
 
 ## Draft Schema
+
 ```jsonc
 {
   "id": "rfp_security_pack_v1",
@@ -36,6 +39,7 @@ Provide a way to define, version, and retrieve rule templates used to evaluate d
 ```
 
 ## APIs (Proposed)
+
 - GET /rules/{documentType}/{version}
 - GET /rules/{documentType}/latest
 - POST /rules (creates draft)
@@ -43,11 +47,13 @@ Provide a way to define, version, and retrieve rule templates used to evaluate d
 - DELETE /rules/{id} (soft delete / optional)
 
 ## Open Questions
+
 - Should we allow rule referencing other rule outputs?
 - Do we need tagging (e.g., domain=finance)?
 - Multi-language support for rule text?
 
 ## Next Steps
+
 - Finalize schema
 - Implement validation logic
 - Seed with a minimal RFP template
