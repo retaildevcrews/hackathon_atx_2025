@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  criteria_api:
+    build: ./criteria_api
+    container_name: criteria_api
+    env_file:
+      - ./criteria_api/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      # Add CosmosDB emulator or other dependencies here if needed
+      []
+    restart: unless-stopped
