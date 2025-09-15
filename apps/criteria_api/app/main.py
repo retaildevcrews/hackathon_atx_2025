@@ -5,6 +5,7 @@ from app.routes import criteria, rubrics
 from app.utils.db import Base, engine
 from app.models import criteria_orm  # ensure import side effects
 from app.models import rubric_orm  # ensure rubric table
+from app.seed.seed_data import seed
 
 app = FastAPI()
 
@@ -19,6 +20,7 @@ app.add_middleware(
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
+seed()
 
 app.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
 app.include_router(rubrics.router, prefix="/rubrics", tags=["rubrics"])
