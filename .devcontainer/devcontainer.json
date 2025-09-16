@@ -28,7 +28,7 @@
           "[markdown]": {
             "editor.formatOnSave": true,
             "editor.formatOnSaveMode": "modificationsIfAvailable",
-            "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+            "editor.defaultFormatter": "vscode.markdown-language-features"
           },
           "files.associations": {
             ".env*": "dotenv",
@@ -71,24 +71,24 @@
             "**/.mypy_cache": true,
             "**/__pycache__": true
           },
-          "editor.guides.highlightActiveIndentation": true,
-          "editor.guides.highlightActiveBracketPair": true,
-          "editor.bracketPairColorization.enabled": true,
-          "editor.guides.bracketPairs": "active",
-          "files.trimTrailingWhitespace": true,
-          "files.trimFinalNewlines": true,
-          "files.insertFinalNewline": true,
-          "shellcheck.enable": true,
-          "shellcheck.enableQuickFix": true,
-          "shellcheck.ignoreFileSchemes": [
-            "git",
-            "gitfs",
-            "output",
-            "test"
-          ],
-          "[jsonc]": {
-            "editor.defaultFormatter": "vscode.json-language-features"
-          }
+            "editor.guides.highlightActiveIndentation": true,
+            "editor.guides.highlightActiveBracketPair": true,
+            "editor.bracketPairColorization.enabled": true,
+            "editor.guides.bracketPairs": "active",
+            "files.trimTrailingWhitespace": true,
+            "files.trimFinalNewlines": true,
+            "files.insertFinalNewline": true,
+            "shellcheck.enable": true,
+            "shellcheck.enableQuickFix": true,
+            "shellcheck.ignoreFileSchemes": [
+              "git",
+              "gitfs",
+              "output",
+              "test"
+            ],
+            "[jsonc]": {
+              "editor.defaultFormatter": "vscode.json-language-features"
+            }
         },
         // Install extensions
         "extensions": [
@@ -117,6 +117,6 @@
         ]
       }
     },
-    "onCreateCommand": ".devcontainer/oncreate.zsh",
-    "postCreateCommand": ""
+    "onCreateCommand": ".devcontainer/oncreate.zsh || true",
+    "postCreateCommand": "pip install --no-cache-dir poetry==1.8.3 && poetry config virtualenvs.in-project true"
   }

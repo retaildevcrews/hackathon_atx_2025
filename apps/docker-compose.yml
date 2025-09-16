@@ -11,6 +11,18 @@ services:
       # Add CosmosDB emulator or other dependencies here if needed
       []
     restart: unless-stopped
+  candidate_api:
+    build:
+      context: ..  # use repo root so shared_utils is included for path dependency
+      dockerfile: apps/candidate_api/Dockerfile
+    container_name: candidate_api
+    env_file:
+      - ./candidate_api/.env
+    ports:
+      - "8002:8002"
+    depends_on:
+      []
+    restart: unless-stopped
   agent:
     build: ./agent
     container_name: agent

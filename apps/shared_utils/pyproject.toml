@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "shared_utils"
+version = "0.1.0"
+description = "Shared utilities for APIs (Cosmos, Blob)"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+azure-cosmos = "^4.6.0"
+azure-storage-blob = "^12.21.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.0.0"
