@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Rubric, Criteria } from '../types/rubric';
+import { Rubric } from '../types/rubric';
 import { useCriteria } from '../hooks/useCriteria';
 import { Box, Typography, TextField, Checkbox, Button, FormGroup, FormControlLabel } from '@mui/material';
 
@@ -58,7 +58,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
           <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
         )}
         <TextField
-          label="Name"
+          label="Name:"
           value={name}
           onChange={e => setName(e.target.value)}
           required
@@ -66,7 +66,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
           margin="normal"
         />
         <TextField
-          label="Description"
+          label="Description:"
           value={description}
           onChange={e => setDescription(e.target.value)}
           required

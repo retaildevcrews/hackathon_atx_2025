@@ -30,6 +30,37 @@ This React app allows users to manage document analysis criteria and build rubri
 - `src/types/` — TypeScript interfaces
 - `src/pages/App.tsx` — Main app layout
 
+## Decision Kits UI (New)
+
+The refactored Decision Kits interface introduces a routed experience with list and detail pages.
+
+Feature Flag:
+
+- Controlled by `VITE_ENABLE_DECISION_KITS_UI` (default enabled). Set to `false` to fall back to legacy rubric manager.
+
+Routes:
+
+- `/` — Decision kit list (cards with name and description)
+- `/decision-kits/:kitId` — Detail view including rubric summary and candidate list
+
+Key Files:
+
+- `src/api/decisionKits.ts` — Fetch functions with in-memory cache
+- `src/hooks/useDecisionKits.ts` & `useDecisionKit.ts` — Data hooks with retry
+- `src/pages/decision-kits/DecisionKitListPage.tsx`
+- `src/pages/decision-kits/DecisionKitDetailPage.tsx`
+- `src/pages/layout/AppLayout.tsx`
+
+Testing:
+
+- `src/__tests__/DecisionKits.test.tsx` includes basic list empty state and detail rubric assertions.
+
+Styling & Accessibility:
+
+- Material UI components
+- Skeleton loaders during initial fetch
+- `twoLineClamp` utility class for description truncation
+
 ## Testing
 - Add unit and integration tests in `src/__tests__/` (recommended)
 
