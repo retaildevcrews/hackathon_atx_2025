@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 from app.utils.db import SessionLocal
 from app.models.decision_kit import (
@@ -136,7 +136,7 @@ def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optiona
                 candidate_name=cand.name if cand else "",
                 position=pos,
             ))
-        kit.updated_at = datetime.now(UTC)
+        kit.updated_at = datetime.now(timezone.utc)
         db.commit(); db.refresh(kit)
         kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc)).filter(DecisionKitORM.id == kit_id).first()
         return _serialize(kit)

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.utils.db import Base
 
 
@@ -12,8 +12,8 @@ class RubricCriterionORM(Base):
     criterion_id = Column(String, ForeignKey("criteria.id", ondelete="RESTRICT"), nullable=False)
     position = Column(Integer, nullable=False)
     weight = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     rubric = relationship("RubricORM", back_populates="criteria_assoc")
 

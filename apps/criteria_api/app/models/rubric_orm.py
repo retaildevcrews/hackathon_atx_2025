@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.utils.db import Base
 
 
@@ -14,8 +14,8 @@ class RubricORM(Base):
     description = Column(Text, nullable=False)
     published = Column(Boolean, default=False, nullable=False)
     published_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # New normalized relationship via join table
     criteria_assoc = relationship(

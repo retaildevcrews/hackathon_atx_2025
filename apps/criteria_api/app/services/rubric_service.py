@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.utils.db import SessionLocal
 from app.models.rubric_orm import RubricORM
 from app.models.rubric_criterion_orm import RubricCriterionORM
@@ -156,7 +156,7 @@ def update_rubric(rubric_id: str, data: RubricUpdate) -> Optional[Rubric]:
                 weight=entry.weight,
             ))
     # association rows already updated
-    orm.updated_at = datetime.now(UTC)
+    orm.updated_at = datetime.now(timezone.utc)
     db.commit(); db.refresh(orm)
     rubric = _serialize_rubric(orm)
     db.close()
@@ -181,8 +181,8 @@ def publish_rubric(rubric_id: str) -> Optional[Rubric]:
             updatedAt=orm.updated_at,
         )
     orm.published = True
-    orm.published_at = datetime.now(UTC)
-    orm.updated_at = datetime.now(UTC)
+    orm.published_at = datetime.now(timezone.utc)
+    orm.updated_at = datetime.now(timezone.utc)
     db.commit(); db.refresh(orm)
     rubric = _serialize_rubric(orm)
     db.close()

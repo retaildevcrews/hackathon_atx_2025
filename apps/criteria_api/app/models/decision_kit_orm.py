@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Integer, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.utils.db import Base
 
 
@@ -15,8 +15,8 @@ class DecisionKitORM(Base):
     rubric_version = Column(String, nullable=False)
     rubric_published = Column(Boolean, nullable=False, default=False)
     status = Column(String, nullable=False, default="OPEN")  # OPEN, CLOSED, ARCHIVED (future)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     candidates_assoc = relationship(
         "DecisionKitCandidateORM",
