@@ -6,6 +6,10 @@ from app.models.criteria import Criteria, CriteriaCreate, CriteriaUpdate
 from app.models.criteria_orm import CriteriaORM
 from app.utils.db import SessionLocal
 
+# Backwards-compatible stub for legacy CosmosDB-based implementation; tests monkeypatch this.
+def get_container():  # pragma: no cover - placeholder
+    return None
+
 def list_criteria() -> List[Criteria]:
     db: Session = SessionLocal()
     items = db.query(CriteriaORM).all()
@@ -23,7 +27,7 @@ def get_criteria_by_id(criteria_id: str) -> Optional[Criteria]:
 def create_criteria(data: CriteriaCreate) -> Criteria:
     db: Session = SessionLocal()
     new_id = str(uuid.uuid4())
-    item = CriteriaORM(id=new_id, **data.dict())
+    item = CriteriaORM(id=new_id, **data.model_dump())
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -36,7 +40,7 @@ def update_criteria(criteria_id: str, data: CriteriaUpdate) -> Optional[Criteria
     if not item:
         db.close()
         return None
-    for field, value in data.dict(exclude_unset=True).items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     db.commit()
     db.refresh(item)

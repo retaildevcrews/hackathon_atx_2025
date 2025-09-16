@@ -1,9 +1,10 @@
 import uuid
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, UTC
 from app.utils.db import SessionLocal
 from app.models.rubric_orm import RubricORM
+from app.models.rubric_criterion_orm import RubricCriterionORM
 from app.models.criteria_orm import CriteriaORM
 from app.models.rubric import RubricCreate, RubricUpdate, Rubric, RubricCriteriaEntry
 
@@ -26,22 +27,27 @@ def _validate_criteria(db: Session, entries: List[RubricCriteriaEntry]):
         raise ValueError(f"invalid criteria ids: {missing}")
 
 
-def list_rubrics(db: Optional[Session] = None) -> List[Rubric]:
-    close = False
-    if db is None:
-        db = SessionLocal(); close = True
-    rows = db.query(RubricORM).order_by(RubricORM.created_at.desc()).all()
-    rubrics = [Rubric(
+def _serialize_rubric(r: RubricORM) -> Rubric:
+    criteria_list = r.get_criteria_entries()
+    return Rubric(
         id=r.id,
         name=r.name_original,
         description=r.description,
-        criteria=r.get_criteria(),
+        criteria=criteria_list,
         version=r.version,
         published=r.published,
         publishedAt=r.published_at,
         createdAt=r.created_at,
         updatedAt=r.updated_at,
-    ) for r in rows]
+    )
+
+
+def list_rubrics(db: Optional[Session] = None) -> List[Rubric]:
+    close = False
+    if db is None:
+        db = SessionLocal(); close = True
+    rows = db.query(RubricORM).order_by(RubricORM.created_at.desc()).all()
+    rubrics = [_serialize_rubric(r) for r in rows]
     if close:
         db.close()
     return rubrics
@@ -52,17 +58,7 @@ def get_rubric_by_id(rubric_id: str) -> Optional[Rubric]:
     r = db.query(RubricORM).filter(RubricORM.id == rubric_id).first()
     if not r:
         db.close(); return None
-    rubric = Rubric(
-        id=r.id,
-        name=r.name_original,
-        description=r.description,
-        criteria=r.get_criteria(),
-        version=r.version,
-        published=r.published,
-        publishedAt=r.published_at,
-        createdAt=r.created_at,
-        updatedAt=r.updated_at,
-    )
+    rubric = _serialize_rubric(r)
     db.close()
     return rubric
 
@@ -84,21 +80,21 @@ def create_rubric(data: RubricCreate) -> Rubric:
         description=data.description,
         published=False,
     )
-    orm.set_criteria([c.dict() for c in data.criteria])
+    # Build association rows
+    orm.criteria_assoc = []
+    for pos, entry in enumerate(data.criteria):
+        orm.criteria_assoc.append(RubricCriterionORM(
+            id=str(uuid.uuid4()),
+            rubric_id=rid,
+            criterion_id=entry.criteriaId,
+            position=pos,
+            weight=entry.weight,
+        ))
+    # Optionally keep legacy JSON for debugging
     db.add(orm)
     db.commit()
     db.refresh(orm)
-    rubric = Rubric(
-        id=orm.id,
-        name=orm.name_original,
-        description=orm.description,
-        criteria=orm.get_criteria(),
-        version=orm.version,
-        published=orm.published,
-        publishedAt=orm.published_at,
-        createdAt=orm.created_at,
-        updatedAt=orm.updated_at,
-    )
+    rubric = _serialize_rubric(orm)
     db.close()
     return rubric
 
@@ -114,20 +110,23 @@ def update_rubric(rubric_id: str, data: RubricUpdate) -> Optional[Rubric]:
         orm.description = data.description
     if data.criteria is not None:
         _validate_criteria(db, data.criteria)
-        orm.set_criteria([c.dict() for c in data.criteria])
-    orm.updated_at = datetime.utcnow()
+        # Clear existing association rows explicitly so flush removes them
+        for existing in list(orm.criteria_assoc):
+            db.delete(existing)
+        orm.criteria_assoc = []
+        db.flush()  # ensure deletes are applied before inserts to avoid unique constraint
+        for pos, entry in enumerate(data.criteria):
+            orm.criteria_assoc.append(RubricCriterionORM(
+                id=str(uuid.uuid4()),
+                rubric_id=orm.id,
+                criterion_id=entry.criteriaId,
+                position=pos,
+                weight=entry.weight,
+            ))
+    # association rows already updated
+    orm.updated_at = datetime.now(UTC)
     db.commit(); db.refresh(orm)
-    rubric = Rubric(
-        id=orm.id,
-        name=orm.name_original,
-        description=orm.description,
-        criteria=orm.get_criteria(),
-        version=orm.version,
-        published=orm.published,
-        publishedAt=orm.published_at,
-        createdAt=orm.created_at,
-        updatedAt=orm.updated_at,
-    )
+    rubric = _serialize_rubric(orm)
     db.close()
     return rubric
 
@@ -150,20 +149,10 @@ def publish_rubric(rubric_id: str) -> Optional[Rubric]:
             updatedAt=orm.updated_at,
         )
     orm.published = True
-    orm.published_at = datetime.utcnow()
-    orm.updated_at = datetime.utcnow()
+    orm.published_at = datetime.now(UTC)
+    orm.updated_at = datetime.now(UTC)
     db.commit(); db.refresh(orm)
-    rubric = Rubric(
-        id=orm.id,
-        name=orm.name_original,
-        description=orm.description,
-        criteria=orm.get_criteria(),
-        version=orm.version,
-        published=orm.published,
-        publishedAt=orm.published_at,
-        createdAt=orm.created_at,
-        updatedAt=orm.updated_at,
-    )
+    rubric = _serialize_rubric(orm)
     db.close()
     return rubric
 
@@ -179,3 +168,12 @@ def delete_rubric(rubric_id: str) -> bool:
     db.commit()
     db.close()
     return True
+
+
+def is_criterion_referenced(criterion_id: str) -> bool:
+    """Return True if any rubric (draft or published) references the given criterion.
+    Placeholder for future deletion guard. """
+    db = SessionLocal()
+    exists = db.query(RubricCriterionORM).filter(RubricCriterionORM.criterion_id == criterion_id).first() is not None
+    db.close()
+    return exists

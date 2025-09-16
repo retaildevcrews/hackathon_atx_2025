@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Text, Boolean, DateTime
-from datetime import datetime
-import json
+from sqlalchemy.orm import relationship
+from datetime import datetime, UTC
 from app.utils.db import Base
 
 
@@ -12,18 +12,18 @@ class RubricORM(Base):
     name_original = Column(String, nullable=False)
     version = Column(String, nullable=False, default="1.0.0")
     description = Column(Text, nullable=False)
-    criteria_json = Column(Text, nullable=False, default="[]")
     published = Column(Boolean, default=False, nullable=False)
     published_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
-    def set_criteria(self, criteria_list):
-        self.criteria_json = json.dumps(criteria_list or [])
-        self.updated_at = datetime.utcnow()
+    # New normalized relationship via join table
+    criteria_assoc = relationship(
+        "RubricCriterionORM",
+        back_populates="rubric",
+        order_by="RubricCriterionORM.position",
+        cascade="all, delete-orphan",
+    )
 
-    def get_criteria(self):
-        try:
-            return json.loads(self.criteria_json or "[]")
-        except json.JSONDecodeError:
-            return []
+    def get_criteria_entries(self):
+        return [rc.to_entry() for rc in self.criteria_assoc]

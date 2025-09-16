@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy.orm import Session
 from app.utils.db import SessionLocal
 from app.models.criteria_orm import CriteriaORM
 from app.models.rubric_orm import RubricORM
+from app.models.rubric_criterion_orm import RubricCriterionORM
 
 
 TV_RUBRIC_NAME = "TV Evaluation"
@@ -155,17 +156,27 @@ def seed():
             db.add(c)
         db.commit()
 
+        rubric_id = str(uuid.uuid4())
         rubric = RubricORM(
-            id=str(uuid.uuid4()),
+            id=rubric_id,
             name_normalized=TV_RUBRIC_NAME.lower(),
             name_original=TV_RUBRIC_NAME,
             version="1.0.0",
             description=TV_RUBRIC_DESCRIPTION,
-            published=True,  # seed as published
-            published_at=datetime.utcnow(),
+            published=True,
+            published_at=datetime.now(UTC),
         )
-        rubric.set_criteria(rubric_entries)
         db.add(rubric)
+        db.commit()
+        # create association rows
+        for pos, entry in enumerate(rubric_entries):
+            db.add(RubricCriterionORM(
+                id=str(uuid.uuid4()),
+                rubric_id=rubric_id,
+                criterion_id=entry["criteriaId"],
+                position=pos,
+                weight=entry["weight"],
+            ))
         db.commit()
     finally:
         db.close()

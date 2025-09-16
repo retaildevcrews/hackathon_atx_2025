@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -13,11 +13,11 @@ class RubricBase(BaseModel):
     description: str
     criteria: List[RubricCriteriaEntry] = Field(default_factory=list)
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def validate_name(cls, v: str):
         if not v or len(v) < 3 or len(v) > 60:
             raise ValueError("name length 3-60 required")
-        # Simple pattern check (alnum, space, dash, underscore)
         import re
         if not re.match(r"^[A-Za-z0-9 _-]+$", v):
             raise ValueError("invalid characters in name")
@@ -29,8 +29,8 @@ class RubricCreate(RubricBase):
 
 
 class RubricUpdate(BaseModel):
-    description: Optional[str]
-    criteria: Optional[List[RubricCriteriaEntry]]
+    description: Optional[str] = None
+    criteria: Optional[List[RubricCriteriaEntry]] = None
 
 
 class Rubric(RubricBase):
@@ -41,5 +41,4 @@ class Rubric(RubricBase):
     createdAt: datetime
     updatedAt: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
