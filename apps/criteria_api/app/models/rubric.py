@@ -3,15 +3,27 @@ from typing import List, Optional
 from datetime import datetime
 
 
-class RubricCriteriaEntry(BaseModel):
+class RubricCriteriaEntryBase(BaseModel):
     criteriaId: str = Field(..., description="Referenced criteria UUID")
-    weight: Optional[float] = Field(None, ge=0, le=1, description="Optional weight 0-1")
+    weight: Optional[float] = Field(
+        None,
+        description="Criterion weight; optional on create/update (default applied if omitted)."
+    )
+
+
+class RubricCriteriaEntryCreate(RubricCriteriaEntryBase):
+    pass
+
+
+class RubricCriteriaEntry(RubricCriteriaEntryBase):
+    # In responses weight is always present
+    weight: float = Field(..., description="Criterion weight (always present in responses)")
 
 
 class RubricBase(BaseModel):
     name: str
     description: str
-    criteria: List[RubricCriteriaEntry] = Field(default_factory=list)
+    criteria: List[RubricCriteriaEntryCreate] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -30,7 +42,7 @@ class RubricCreate(RubricBase):
 
 class RubricUpdate(BaseModel):
     description: Optional[str] = None
-    criteria: Optional[List[RubricCriteriaEntry]] = None
+    criteria: Optional[List[RubricCriteriaEntryCreate]] = None
 
 
 class Rubric(RubricBase):
@@ -40,5 +52,8 @@ class Rubric(RubricBase):
     publishedAt: Optional[datetime]
     createdAt: datetime
     updatedAt: datetime
+
+    # Override criteria type for responses (weight required)
+    criteria: List[RubricCriteriaEntry]
 
     model_config = ConfigDict(from_attributes=True)

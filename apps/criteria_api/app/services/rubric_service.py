@@ -6,25 +6,57 @@ from app.utils.db import SessionLocal
 from app.models.rubric_orm import RubricORM
 from app.models.rubric_criterion_orm import RubricCriterionORM
 from app.models.criteria_orm import CriteriaORM
-from app.models.rubric import RubricCreate, RubricUpdate, Rubric, RubricCriteriaEntry
+from app.models.rubric import RubricCreate, RubricUpdate, Rubric, RubricCriteriaEntry, RubricCriteriaEntryCreate
+from app.config import settings
+import math
 
 
 def _normalize_name(name: str) -> str:
     return name.strip().lower()
 
 
-def _validate_criteria(db: Session, entries: List[RubricCriteriaEntry]):
+class RubricValidationError(ValueError):
+    def __init__(self, code: str, detail: str = "", **ctx):  # context for error mapping
+        self.code = code
+        self.detail = detail
+        self.ctx = ctx
+        super().__init__(detail or code)
+
+
+def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEntryCreate]):
     if not entries:
-        return
-    ids = [e.criteriaId for e in entries]
-    # detect duplicates
-    if len(set(ids)) != len(ids):
-        raise ValueError("duplicate criteria ids")
-    existing = db.query(CriteriaORM.id).filter(CriteriaORM.id.in_(ids)).all()
+        return []
+    ids_seen = set()
+    normalized: List[RubricCriteriaEntry] = []
+    for idx, e in enumerate(entries):
+        cid = e.criteriaId
+        if cid in ids_seen:
+            raise RubricValidationError("DUPLICATE_CRITERIA", criteria_id=cid, index=idx)
+        ids_seen.add(cid)
+        weight = e.weight
+        if weight is None:
+            weight = settings.DEFAULT_RUBRIC_WEIGHT
+        # Type / numeric validation
+        if not isinstance(weight, (int, float)) or isinstance(weight, bool):
+            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be numeric", index=idx)
+        if not math.isfinite(weight):
+            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be finite", index=idx)
+        if weight == 0 and not settings.ALLOW_ZERO_WEIGHT:
+            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be > 0", index=idx)
+        if weight < 0:
+            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be >= 0" if settings.ALLOW_ZERO_WEIGHT else "weight must be > 0", index=idx)
+        if weight > settings.MAX_RUBRIC_WEIGHT:
+            raise RubricValidationError("WEIGHT_TOO_LARGE", detail="weight above maximum", index=idx, limit=settings.MAX_RUBRIC_WEIGHT)
+        weight = float(weight)
+        normalized.append(RubricCriteriaEntry(criteriaId=cid, weight=weight))
+
+    # Validate existence of criteria ids
+    existing = db.query(CriteriaORM.id).filter(CriteriaORM.id.in_([n.criteriaId for n in normalized])).all()
     existing_ids = {row[0] for row in existing}
-    missing = [c for c in ids if c not in existing_ids]
+    missing = [n.criteriaId for n in normalized if n.criteriaId not in existing_ids]
     if missing:
-        raise ValueError(f"invalid criteria ids: {missing}")
+        raise RubricValidationError("INVALID_CRITERIA", detail=f"invalid criteria ids: {missing}")
+    return normalized
 
 
 def _serialize_rubric(r: RubricORM) -> Rubric:
@@ -70,7 +102,7 @@ def create_rubric(data: RubricCreate) -> Rubric:
     if existing:
         db.close()
         raise ValueError("rubric name exists")
-    _validate_criteria(db, data.criteria)
+    normalized_entries = _normalize_and_validate_entries(db, data.criteria)
     rid = str(uuid.uuid4())
     orm = RubricORM(
         id=rid,
@@ -82,7 +114,7 @@ def create_rubric(data: RubricCreate) -> Rubric:
     )
     # Build association rows
     orm.criteria_assoc = []
-    for pos, entry in enumerate(data.criteria):
+    for pos, entry in enumerate(normalized_entries):
         orm.criteria_assoc.append(RubricCriterionORM(
             id=str(uuid.uuid4()),
             rubric_id=rid,
@@ -109,13 +141,13 @@ def update_rubric(rubric_id: str, data: RubricUpdate) -> Optional[Rubric]:
     if data.description is not None:
         orm.description = data.description
     if data.criteria is not None:
-        _validate_criteria(db, data.criteria)
+        normalized_entries = _normalize_and_validate_entries(db, data.criteria)
         # Clear existing association rows explicitly so flush removes them
         for existing in list(orm.criteria_assoc):
             db.delete(existing)
         orm.criteria_assoc = []
         db.flush()  # ensure deletes are applied before inserts to avoid unique constraint
-        for pos, entry in enumerate(data.criteria):
+        for pos, entry in enumerate(normalized_entries):
             orm.criteria_assoc.append(RubricCriterionORM(
                 id=str(uuid.uuid4()),
                 rubric_id=orm.id,

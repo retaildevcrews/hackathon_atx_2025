@@ -41,15 +41,16 @@ def _get_any_rubric_id():
 def test_create_decision_kit_success():
     rid = _get_any_rubric_id()
     candidate_ids = _ensure_candidates(2)
+    unique_name = f"My Kit {uuid.uuid4().hex[:6]}"
     resp = client.post("/decision-kits/", json={
-        "name": "My Kit",
+        "name": unique_name,
         "description": "Test kit",
         "rubricId": rid,
         "candidateIds": candidate_ids,
     })
     assert resp.status_code == 201, resp.text
     data = resp.json()
-    assert data["name"] == "My Kit"
+    assert data["name"] == unique_name
     assert len(data["candidates"]) == 2
     assert data["candidates"][0]["position"] == 0
 
@@ -57,8 +58,9 @@ def test_create_decision_kit_success():
 def test_duplicate_name_conflict():
     rid = _get_any_rubric_id()
     candidate_ids = _ensure_candidates(1)
+    base_name = f"Unique Kit {uuid.uuid4().hex[:6]}"
     payload = {
-        "name": "Unique Kit",
+        "name": base_name,
         "description": None,
         "rubricId": rid,
         "candidateIds": candidate_ids,
@@ -84,8 +86,9 @@ def test_invalid_candidate_id():
 def test_update_candidates_reorder_and_remove():
     rid = _get_any_rubric_id()
     cids = _ensure_candidates(3)
+    reorder_name = f"Reorder Kit {uuid.uuid4().hex[:6]}"
     create = client.post("/decision-kits/", json={
-        "name": "Reorder Kit",
+        "name": reorder_name,
         "description": None,
         "rubricId": rid,
         "candidateIds": cids,
@@ -104,8 +107,9 @@ def test_update_candidates_reorder_and_remove():
 def test_delete_decision_kit():
     rid = _get_any_rubric_id()
     cids = _ensure_candidates(1)
+    temp_name = f"Temp Kit {uuid.uuid4().hex[:6]}"
     create = client.post("/decision-kits/", json={
-        "name": "Temp Kit",
+        "name": temp_name,
         "description": None,
         "rubricId": rid,
         "candidateIds": cids,

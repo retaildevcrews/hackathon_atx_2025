@@ -113,4 +113,5 @@ def test_duplicate_criterion_rejected():
             {"criteriaId": c1, "weight": 0.5},
         ]
     })
-    assert resp.status_code == 400
+    # Now returns structured validation error 422
+    assert resp.status_code == 422
