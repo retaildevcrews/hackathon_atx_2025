@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useParams, Link as RouterLink } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Fab } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
+import { AttachRubricForm } from '../../components/AttachRubricForm';
+import { assignRubricToDecisionKit } from '../../api/decisionKits';
+import { fetchRubricSummary } from '../../api/rubrics';
 // import { assignRubricToDecisionKit, primeDecisionKitCache } from '../../api/decisionKits';
 
 export const DecisionKitDetailPage: React.FC = () => {
@@ -15,7 +17,8 @@ export const DecisionKitDetailPage: React.FC = () => {
   const rubricId = kit?.rubric?.id || kit?.rubricId;
   const needsRubricFetch = !kit?.rubric && !!rubricId;
   const { rubric, loading: rubricLoading, error: rubricError, retry: retryRubric } = useRubricSummary(needsRubricFetch ? rubricId : undefined);
-  const effectiveRubric = kit?.rubric || rubric;
+  const [attachedRubric, setAttachedRubric] = useState<any | null>(null);
+  const effectiveRubric = attachedRubric || kit?.rubric || rubric;
   const [rubricOpen, setRubricOpen] = useState(true);
   const [candidatesOpen, setCandidatesOpen] = useState(true);
   // const [attachError, setAttachError] = useState<string | null>(null);
@@ -64,20 +67,24 @@ export const DecisionKitDetailPage: React.FC = () => {
             <Skeleton variant="rectangular" height={60} sx={{ mt: 1 }} />
           </>
         ) : (
-          <Box position="relative">
-            <Typography variant="body2" sx={{ mb: 1 }}>No rubric data available.</Typography>
-            {/* Error display removed with inline attach; rely on attach page for errors */}
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1 }}>No rubric data available. Attach one to get started.</Typography>
             {kit && (
-              <Fab
-                color="primary"
-                variant="extended"
-                aria-label="Attach Rubric"
-                component={RouterLink}
-                to={`/decision-kits/${encodeURIComponent(kit.id)}/attach-rubric`}
-                sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: (theme) => theme.zIndex.tooltip }}
-              >
-                <AddIcon sx={{ mr: 1 }} /> Attach Rubric
-              </Fab>
+              <AttachRubricForm
+                onAttach={async (rid: string) => {
+                  const updated = await assignRubricToDecisionKit(kit.id, rid);
+                  if (updated && (updated as any).rubric) {
+                    setAttachedRubric((updated as any).rubric);
+                  } else {
+                    try {
+                      const summary = await fetchRubricSummary(rid);
+                      setAttachedRubric(summary as any);
+                    } catch {
+                      // ignore fetch errors here; leave UI as-is
+                    }
+                  }
+                }}
+              />
             )}
           </Box>
         ))}

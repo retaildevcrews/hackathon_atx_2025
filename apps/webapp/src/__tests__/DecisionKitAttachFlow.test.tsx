@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DecisionKitDetailPage } from '../pages/decision-kits/DecisionKitDetailPage';
-import { DecisionKitAttachRubricPage } from '../pages/decision-kits/DecisionKitAttachRubricPage';
 import * as kitsApi from '../api/decisionKits';
 
 jest.mock('../api/decisionKits');
@@ -16,7 +15,7 @@ describe('DecisionKitDetailPage attach rubric flow', () => {
     jest.clearAllMocks();
   });
 
-  it('navigates to attach page via FAB and attaches a rubric', async () => {
+  it('attaches a rubric inline on the detail page when no rubric is present', async () => {
     // Initial kit without rubric
     mockFetchDecisionKit.mockResolvedValueOnce({
       id: 'kit-1',
@@ -61,7 +60,6 @@ describe('DecisionKitDetailPage attach rubric flow', () => {
       <MemoryRouter initialEntries={["/decision-kits/kit-1"]}>
         <Routes>
           <Route path="decision-kits/:kitId" element={<DecisionKitDetailPage />} />
-          <Route path="decision-kits/:kitId/attach-rubric" element={<DecisionKitAttachRubricPage />} />
         </Routes>
       </MemoryRouter>
     );
@@ -69,17 +67,14 @@ describe('DecisionKitDetailPage attach rubric flow', () => {
     // Wait for initial load to finish and show attach UI
     await waitFor(() => expect(screen.getByText(/No rubric data available/i)).toBeInTheDocument());
 
-  // Click the bottom-right FAB to navigate to the attach page
-  const attachLink = screen.getByRole('link', { name: /Attach Rubric/i });
-  fireEvent.click(attachLink);
-  // Now on attach page, fill and submit
+  // Inline form should be visible; fill and submit
   const idInput = await screen.findByLabelText(/Rubric ID/i);
   fireEvent.change(idInput, { target: { value: 'rubric-xyz' } });
   fireEvent.click(screen.getByRole('button', { name: /Attach/i }));
 
     await waitFor(() => expect(mockAssign).toHaveBeenCalledWith('kit-1', 'rubric-xyz'));
 
-    // After attach and retry, the rubric details should be visible
+    // After attach, the rubric details should be visible
     await waitFor(() => expect(screen.getByText('R1')).toBeInTheDocument());
     expect(screen.getByText(/Criteria: 0/)).toBeInTheDocument();
   });
