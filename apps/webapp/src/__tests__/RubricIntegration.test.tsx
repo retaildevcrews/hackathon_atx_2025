@@ -1,5 +1,6 @@
+/// <reference types="jest" />
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { App } from '../pages/App';
 import { Rubric } from '../types/rubric';
 
@@ -34,7 +35,11 @@ jest.mock('../hooks/useCriteria', () => ({
   })
 }));
 
-describe('Rubric Integration', () => {
+describe('Rubric Integration (legacy UI)', () => {
+  beforeAll(() => {
+    // Force legacy mode
+    (window as any).__ENABLE_DECISION_KITS_UI__ = 'false';
+  });
   it('displays rubric list and details', async () => {
     render(<App />);
     expect(screen.getByText(/Rubric 1/i)).toBeInTheDocument();
