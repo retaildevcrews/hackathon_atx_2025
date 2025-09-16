@@ -28,15 +28,18 @@ def test_create_and_crud_criteria(monkeypatch):
     dummy = DummyContainer()
     monkeypatch.setattr(criteria_service, "get_container", lambda: dummy)
 
+    # Baseline count (seed may have inserted rows)
+    baseline = client.get("/criteria/").json()
+    base_len = len(baseline)
     # Create
     resp = client.post("/criteria/", json={"name": "A", "description": "desc", "definition": "def"})
     assert resp.status_code == 201
     data = resp.json()
     cid = data["id"]
-    # List
+    # List should increase by 1
     resp = client.get("/criteria/")
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    assert len(resp.json()) == base_len + 1
     # Get
     resp = client.get(f"/criteria/{cid}")
     assert resp.status_code == 200

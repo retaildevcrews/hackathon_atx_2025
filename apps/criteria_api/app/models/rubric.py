@@ -1,23 +1,39 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
 
-class RubricCriteriaEntry(BaseModel):
+class RubricCriteriaEntryBase(BaseModel):
     criteriaId: str = Field(..., description="Referenced criteria UUID")
-    weight: Optional[float] = Field(None, ge=0, le=1, description="Optional weight 0-1")
+    weight: Optional[float] = Field(
+        None,
+        description="Criterion weight; optional on create/update (default applied if omitted)."
+    )
+
+
+class RubricCriteriaEntryCreate(RubricCriteriaEntryBase):
+    pass
+
+
+class RubricCriteriaEntry(RubricCriteriaEntryBase):
+    # In responses weight is always present
+    weight: float = Field(..., description="Criterion weight (always present in responses)")
+    # Optional enrichment metadata
+    name: str | None = Field(None, description="Criteria name (enriched)")
+    description: str | None = Field(None, description="Criteria description (enriched)")
+    definition: str | None = Field(None, description="Criteria definition (enriched)")
 
 
 class RubricBase(BaseModel):
     name: str
     description: str
-    criteria: List[RubricCriteriaEntry] = Field(default_factory=list)
+    criteria: List[RubricCriteriaEntryCreate] = Field(default_factory=list)
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def validate_name(cls, v: str):
         if not v or len(v) < 3 or len(v) > 60:
             raise ValueError("name length 3-60 required")
-        # Simple pattern check (alnum, space, dash, underscore)
         import re
         if not re.match(r"^[A-Za-z0-9 _-]+$", v):
             raise ValueError("invalid characters in name")
@@ -29,8 +45,8 @@ class RubricCreate(RubricBase):
 
 
 class RubricUpdate(BaseModel):
-    description: Optional[str]
-    criteria: Optional[List[RubricCriteriaEntry]]
+    description: Optional[str] = None
+    criteria: Optional[List[RubricCriteriaEntryCreate]] = None
 
 
 class Rubric(RubricBase):
@@ -41,5 +57,7 @@ class Rubric(RubricBase):
     createdAt: datetime
     updatedAt: datetime
 
-    class Config:
-        orm_mode = True
+    # Override criteria type for responses (weight required)
+    criteria: List[RubricCriteriaEntry]
+
+    model_config = ConfigDict(from_attributes=True)
