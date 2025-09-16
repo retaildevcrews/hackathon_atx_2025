@@ -55,7 +55,7 @@ curl -s -X POST http://localhost:8001/invoke -H 'Content-Type: application/json'
 
 ## Project Layout
 
-```
+```text
 config.py
 main.py
 models/
@@ -66,6 +66,38 @@ services/
   search_service.py
   chain_service.py
 ```
+
+## Code Quality / Linting
+
+### Ruff (fast style/lint)
+
+```bash
+poetry run ruff check .
+```
+
+### Black (format)
+
+```bash
+poetry run black .
+```
+
+### Pylint (deeper static analysis)
+
+Configuration: `.pylintrc` in this directory.
+
+Run on all modules:
+
+```bash
+poetry run pylint agent
+```
+
+Or target specific files:
+
+```bash
+poetry run pylint main.py services/*.py routes/*.py
+```
+
+Return code non‑zero indicates issues. Current config intentionally suppresses some warnings (docstrings, broad exceptions) during early scaffolding.
 
 ## Next Steps
 

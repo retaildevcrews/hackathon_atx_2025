@@ -1,0 +1,60 @@
+[MASTER]
+ignore=tests
+ignore-patterns=^\.|.*__init__\.py
+jobs=0
+persistent=no
+load-plugins=
+init-hook='import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))'
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods (pydantic models / service shells)
+    W0511,  # TODO
+    R0801,  # duplicate-code (temporary during scaffolding)
+    C0103,  # variable-name (allow short names where clear)
+    R0913,  # too-many-arguments (FastAPI endpoints often injectable)
+    R0917,  # too-many-positional-arguments
+    R0914,  # too-many-locals (may appear in chains)
+    R0912,  # too-many-branches (will refactor later)
+    R0915,  # too-many-statements
+    W0718,  # broad-exception-caught (acceptable for boundary service layer for now)
+    W1203,  # logging-fstring-interpolation (we enforce consistent style manually)
+
+[REPORTS]
+output-format=colorized
+score=yes
+
+[FORMAT]
+max-line-length=120
+max-module-lines=400
+indent-string='    '
+
+[TYPECHECK]
+ignored-modules=httpx,langchain_openai,langchain_core
+ignored-classes=Settings
+
+[DESIGN]
+max-attributes=15
+max-args=10
+max-public-methods=30
+
+[IMPORTS]
+known-third-party=httpx,fastapi,pydantic,openai
+
+[LOGGING]
+logging-format-style=new
+
+[SIMILARITIES]
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=yes
+min-similarity-lines=6
+
+[STRING]
+check-str-concat-over-line-jumps=yes
+
+[EXCEPTIONS]
+overgeneral-exceptions=builtins.Exception

@@ -44,9 +44,10 @@ class ChainService:
             chain = self.prompt | self.llm
             result = chain.invoke({"input": user_input})
             return result.content  # type: ignore[attr-defined]
-        except Exception as e:  # noqa: BLE001
-            logger.exception("LangChain chain invocation failed: %s", e)
-            return f"[chain error] {e}"
+        except Exception as exc:  # noqa: BLE001
+            # logger.exception already includes stack trace.
+            logger.exception("LangChain chain invocation failed", exc_info=exc)
+            return f"[chain error] {exc}"  # Avoid leaking internals beyond message.
 
 
 @lru_cache(maxsize=1)

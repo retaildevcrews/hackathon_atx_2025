@@ -32,7 +32,9 @@ class AzureSearchService:
                     "content": f"Stub result for query: {query}",
                 }
             ]
-        endpoint = self.settings.azure_search_endpoint.rstrip("/")
+        # Safe guard: endpoint should be a string if enabled, but be defensive.
+        endpoint_raw = self.settings.azure_search_endpoint or ""
+        endpoint = endpoint_raw.rstrip("/")
         url = f"{endpoint}/indexes/{self.settings.azure_search_index}/docs/search?api-version=2023-11-01"
         headers = {
             "Content-Type": "application/json",
@@ -53,8 +55,8 @@ class AzureSearchService:
                     for doc in data.get("value", [])
                 ]
                 return results
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Azure Search query failed: %s", e)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Azure Search query failed", exc_info=exc)
             return []
 
 
