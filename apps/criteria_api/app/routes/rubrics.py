@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 from app.models.rubric import Rubric, RubricCreate, RubricUpdate
 from app.services import rubric_service
+from app.services.rubric_service import RubricValidationError
 
 router = APIRouter()
 
@@ -23,6 +24,8 @@ def get_rubric(rubric_id: str):
 def create_rubric(payload: RubricCreate):
     try:
         return rubric_service.create_rubric(payload)
+    except RubricValidationError as e:
+        raise HTTPException(status_code=422, detail={"error": e.code, **e.ctx, "detail": e.detail})
     except ValueError as e:
         msg = str(e)
         if "exists" in msg:
@@ -34,6 +37,8 @@ def create_rubric(payload: RubricCreate):
 def update_rubric(rubric_id: str, payload: RubricUpdate):
     try:
         r = rubric_service.update_rubric(rubric_id, payload)
+    except RubricValidationError as e:
+        raise HTTPException(status_code=422, detail={"error": e.code, **e.ctx, "detail": e.detail})
     except ValueError as e:
         if "immutable" in str(e):
             raise HTTPException(status_code=409, detail="Rubric already published")
