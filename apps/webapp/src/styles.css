@@ -1,1 +1,4 @@
 .twoLineClamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-clamp: 2; }
+
+/* Ensure full-width AppBar with no body margin gaps */
+html, body { margin: 0; padding: 0; }
