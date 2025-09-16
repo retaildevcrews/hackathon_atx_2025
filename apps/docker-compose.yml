@@ -11,6 +11,13 @@ services:
       # Add CosmosDB emulator or other dependencies here if needed
       []
     restart: unless-stopped
+  agent:
+    build: ./agent
+    container_name: agent
+    env_file:
+      - ./agent/.env
+    ports:
+      - "8001:8001"
   webapp:
     build: ./webapp
     container_name: veda_webapp
@@ -20,4 +27,3 @@ services:
       - "5173:5173"
     depends_on:
       - criteria_api
-    restart: unless-stopped

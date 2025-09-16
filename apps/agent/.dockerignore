@@ -1,0 +1,72 @@
+# VCS
+.git
+.gitignore
+.gitmodules
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.build/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyre/
+.dmypy.json
+.cache/
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Env & secrets (keep example)
+.env
+.env.local
+*.env.backup
+!.env.example
+
+# Test artifacts
+coverage.*
+htmlcov/
+.tox/
+pytest.ini
+tests/
+**/tests/
+
+# Logs / runtime
+*.log
+*.pid
+
+# Not needed in runtime image
+docs/
+README.md
+CHANGELOG.md
+
+# Node / frontend (if accidentally copied)
+node_modules/
+npm-debug.log*
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Docker intermediary
+docker-compose*.yml
