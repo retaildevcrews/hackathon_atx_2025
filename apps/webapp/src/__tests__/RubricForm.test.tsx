@@ -16,24 +16,28 @@ describe('RubricForm', () => {
   it('validates required fields', () => {
     const onSave = jest.fn();
     render(<RubricForm onSave={onSave} />);
-    fireEvent.click(screen.getByText(/Save Rubric/i));
-    expect(screen.getByText(/Name is required/i)).toBeInTheDocument();
+    // Submit is disabled when invalid; trigger field-level validation via blur
+    fireEvent.blur(screen.getByLabelText(/Name/i));
+    expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
 
   it('validates criteria selection', () => {
     const onSave = jest.fn();
     render(<RubricForm onSave={onSave} />);
-    fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'Test Rubric' } });
-    fireEvent.change(screen.getByLabelText(/Description:/i), { target: { value: 'Test Description' } });
-    fireEvent.click(screen.getByText(/Save Rubric/i));
-    expect(screen.getByText(/select at least one criterion/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test Rubric' } });
+    fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Test Description' } });
+    // Toggle a criterion on then off to mark criteria as touched with none selected
+    const crit = screen.getByLabelText(/Criterion 1/i);
+    fireEvent.click(crit); // select
+    fireEvent.click(crit); // deselect
+    expect(screen.getByText('Please select at least one criterion.')).toBeInTheDocument();
   });
 
   it('calls onSave with valid data', () => {
     const onSave = jest.fn();
     render(<RubricForm onSave={onSave} />);
-    fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'Test Rubric' } });
-    fireEvent.change(screen.getByLabelText(/Description:/i), { target: { value: 'Test Description' } });
+    fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Test Rubric' } });
+    fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Test Description' } });
     fireEvent.click(screen.getByLabelText(/Criterion 1/i));
     fireEvent.click(screen.getByText(/Save Rubric/i));
     expect(onSave).toHaveBeenCalledWith({

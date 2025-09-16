@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   criteria_api:
     build: ./criteria_api

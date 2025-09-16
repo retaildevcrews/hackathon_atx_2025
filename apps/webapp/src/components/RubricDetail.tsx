@@ -19,6 +19,7 @@ export const RubricDetail: React.FC<RubricDetailProps> = ({ rubric }) => {
               <ListItem alignItems="flex-start">
                 <ListItemText
                   primary={c.name}
+                  secondaryTypographyProps={{ component: 'div' }}
                   secondary={
                     <>
                       <Typography variant="body2" color="text.secondary">{c.description}</Typography>
