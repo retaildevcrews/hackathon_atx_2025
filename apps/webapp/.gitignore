@@ -1,0 +1,42 @@
+# Node modules
+node_modules/
+
+# Build output
+build/
+dist/
+
+# Yarn
+.yarn/
+.yarnrc.yml
+.pnp.*
+.yarn-error.log
+
+# npm
+npm-debug.log*
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Misc
+.DS_Store
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Coverage
+coverage/
+
+# React specific
+*.tsbuildinfo
+
+# OS generated files
+Thumbs.db
