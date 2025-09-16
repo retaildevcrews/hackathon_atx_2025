@@ -5,7 +5,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import config  # noqa: F401
 from app.routes import candidates
 
-app = FastAPI()
+app = FastAPI(
+    title="Candidate API",
+    description="""Manage candidates and their uploaded materials.\n\n"
+                "This service provides endpoints to create candidates, list them, and manage related document uploads."
+                " Uses Cosmos DB (candidates + materials) and optional Azure Blob Storage (fallback when unset).""",
+    version="0.1.0",
+    contact={
+        "name": "Platform Team",
+        "url": "https://example.com",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    openapi_tags=[
+        {
+            "name": "candidates",
+            "description": "Candidate CRUD and material upload operations.",
+        },
+    ],
+)
 
 app.add_middleware(
     CORSMiddleware,
