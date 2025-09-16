@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Early import to ensure .env variables are loaded before shared_utils (cosmos/blob) modules resolve env vars.
+from app import config  # noqa: F401
 from app.routes import candidates
 
 app = FastAPI()
