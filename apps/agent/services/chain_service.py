@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from functools import lru_cache
 
 from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -49,5 +49,12 @@ class ChainService:
             return f"[chain error] {e}"
 
 
+@lru_cache(maxsize=1)
 def get_chain_service() -> ChainService:
+    """Return a cached singleton ChainService instance.
+
+    Using an LRU cache avoids re-instantiating the LangChain LLM and prompt
+    objects on every request, reducing overhead. Settings are loaded once at
+    process start; restart the process to pick up changed environment vars.
+    """
     return ChainService()

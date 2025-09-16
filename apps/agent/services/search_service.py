@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from functools import lru_cache
 import httpx
 
 from config import get_settings
@@ -57,5 +58,11 @@ class AzureSearchService:
             return []
 
 
+@lru_cache(maxsize=1)
 def get_search_service() -> AzureSearchService:
+    """Return a cached singleton AzureSearchService instance.
+
+    Prevents rebuilding configuration each request. If search configuration
+    changes at runtime a restart is required to reflect new env values.
+    """
     return AzureSearchService()
