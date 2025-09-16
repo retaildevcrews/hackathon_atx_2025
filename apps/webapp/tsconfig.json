@@ -17,5 +17,6 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "references": []
+  "references": [],
+  "exclude": ["node_modules", "dist", "src/__tests__"],
 }
