@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider } from '@mui/material';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Fab } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
+// import { assignRubricToDecisionKit, primeDecisionKitCache } from '../../api/decisionKits';
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
@@ -16,6 +18,7 @@ export const DecisionKitDetailPage: React.FC = () => {
   const effectiveRubric = kit?.rubric || rubric;
   const [rubricOpen, setRubricOpen] = useState(true);
   const [candidatesOpen, setCandidatesOpen] = useState(true);
+  // const [attachError, setAttachError] = useState<string | null>(null);
 
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[DecisionKitDetail] kitId', kitId, 'needsRubricFetch', needsRubricFetch, 'rubricId', rubricId);
@@ -61,7 +64,22 @@ export const DecisionKitDetailPage: React.FC = () => {
             <Skeleton variant="rectangular" height={60} sx={{ mt: 1 }} />
           </>
         ) : (
-          <Typography variant="body2">No rubric data available.</Typography>
+          <Box position="relative">
+            <Typography variant="body2" sx={{ mb: 1 }}>No rubric data available.</Typography>
+            {/* Error display removed with inline attach; rely on attach page for errors */}
+            {kit && (
+              <Fab
+                color="primary"
+                variant="extended"
+                aria-label="Attach Rubric"
+                component={RouterLink}
+                to={`/decision-kits/${encodeURIComponent(kit.id)}/attach-rubric`}
+                sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: (theme) => theme.zIndex.tooltip }}
+              >
+                <AddIcon sx={{ mr: 1 }} /> Attach Rubric
+              </Fab>
+            )}
+          </Box>
         ))}
         <Collapse in={rubricOpen} unmountOnExit timeout="auto">
           {effectiveRubric && (
