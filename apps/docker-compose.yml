@@ -11,3 +11,11 @@ services:
       # Add CosmosDB emulator or other dependencies here if needed
       []
     restart: unless-stopped
+  agent:
+    build: ./agent
+    container_name: agent
+    env_file:
+      - ./agent/.env
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
