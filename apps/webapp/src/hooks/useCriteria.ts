@@ -8,7 +8,11 @@ export interface Criteria {
   definition: string;
 }
 
-const API_BASE = (import.meta as any).env?.VITE_CRITERIA_API_URL || (window as any).__CRITERIA_API_URL__ || 'http://localhost:8000';
+const API_BASE = (
+  (typeof window !== 'undefined' && (window as any).__CRITERIA_API_URL__) ||
+  process.env.VITE_CRITERIA_API_URL ||
+  'http://localhost:8000'
+);
 
 // Single axios instance with basic timeout + JSON headers
 const api = axios.create({

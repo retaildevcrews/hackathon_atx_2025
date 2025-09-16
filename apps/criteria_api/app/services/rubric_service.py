@@ -59,13 +59,45 @@ def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEnt
     return normalized
 
 
-def _serialize_rubric(r: RubricORM) -> Rubric:
-    criteria_list = r.get_criteria_entries()
+def _serialize_rubric(r: RubricORM, db: Optional[Session] = None) -> Rubric:
+    # Original lightweight entries
+    base_entries = r.get_criteria_entries()  # List[RubricCriteriaEntry]
+    # Fetch all referenced criteria to enrich with name/description/definition
+    enrich_map = {}
+    if base_entries:
+        close = False
+        if db is None:
+            db = SessionLocal(); close = True
+        # Support both dict-based (from to_entry()) and Pydantic model entries
+        ids = [ (e.get('criteriaId') if isinstance(e, dict) else getattr(e, 'criteriaId', None)) for e in base_entries ]
+        rows = db.query(CriteriaORM).filter(CriteriaORM.id.in_(ids)).all()
+        enrich_map = {row.id: row for row in rows}
+        if close:
+            db.close()
+    # Build enriched entries (still conforming to RubricCriteriaEntry but we add extra attrs dynamically)
+    enriched = []
+    for e in base_entries:
+        # e may already be a dict from RubricCriterionORM.to_entry()
+        if isinstance(e, dict):
+            criteria_id = e.get('criteriaId')
+            weight_val = e.get('weight')
+        else:  # Pydantic model
+            criteria_id = getattr(e, 'criteriaId', None)
+            weight_val = getattr(e, 'weight', None)
+        orm = enrich_map.get(criteria_id)
+        data = {
+            'criteriaId': criteria_id,
+            'weight': weight_val,
+            'name': getattr(orm, 'name', None) if orm else None,
+            'description': getattr(orm, 'description', None) if orm else None,
+            'definition': getattr(orm, 'definition', None) if orm else None,
+        }
+        enriched.append(RubricCriteriaEntry(**data))
     return Rubric(
         id=r.id,
         name=r.name_original,
         description=r.description,
-        criteria=criteria_list,
+        criteria=enriched,
         version=r.version,
         published=r.published,
         publishedAt=r.published_at,
@@ -79,7 +111,7 @@ def list_rubrics(db: Optional[Session] = None) -> List[Rubric]:
     if db is None:
         db = SessionLocal(); close = True
     rows = db.query(RubricORM).order_by(RubricORM.created_at.desc()).all()
-    rubrics = [_serialize_rubric(r) for r in rows]
+    rubrics = [_serialize_rubric(r, db) for r in rows]
     if close:
         db.close()
     return rubrics
@@ -126,7 +158,7 @@ def create_rubric(data: RubricCreate) -> Rubric:
     db.add(orm)
     db.commit()
     db.refresh(orm)
-    rubric = _serialize_rubric(orm)
+    rubric = _serialize_rubric(orm, db)
     db.close()
     return rubric
 
@@ -169,17 +201,7 @@ def publish_rubric(rubric_id: str) -> Optional[Rubric]:
     if not orm:
         db.close(); return None
     if orm.published:
-        db.close(); return Rubric(
-            id=orm.id,
-            name=orm.name_original,
-            description=orm.description,
-            criteria=orm.get_criteria(),
-            version=orm.version,
-            published=orm.published,
-            publishedAt=orm.published_at,
-            createdAt=orm.created_at,
-            updatedAt=orm.updated_at,
-        )
+        db.close(); return _serialize_rubric(orm)
     orm.published = True
     orm.published_at = datetime.now(timezone.utc)
     orm.updated_at = datetime.now(timezone.utc)

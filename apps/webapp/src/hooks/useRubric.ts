@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
 import { Rubric } from '../types/rubric';
 
 const API_URL = '/api/rubrics';

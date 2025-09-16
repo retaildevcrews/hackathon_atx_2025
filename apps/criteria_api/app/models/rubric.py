@@ -18,6 +18,10 @@ class RubricCriteriaEntryCreate(RubricCriteriaEntryBase):
 class RubricCriteriaEntry(RubricCriteriaEntryBase):
     # In responses weight is always present
     weight: float = Field(..., description="Criterion weight (always present in responses)")
+    # Optional enrichment metadata
+    name: str | None = Field(None, description="Criteria name (enriched)")
+    description: str | None = Field(None, description="Criteria description (enriched)")
+    definition: str | None = Field(None, description="Criteria definition (enriched)")
 
 
 class RubricBase(BaseModel):
