@@ -4,12 +4,46 @@ Evaluation prompt templates for document assessment against rubrics.
 
 from langchain_core.prompts import ChatPromptTemplate
 
+SINGLE_EVALUATION_PROMPT = """
+You are an expert document evaluator. Evaluate the following document content against the given criterion.
+
+Criterion: {name}
+Description: {description}
+Weight: {weight}
+
+Scoring Criteria:
+{definition}
+
+Document Content:
+{document_chunk_content}
+
+Instructions:
+- Provide a score strictly following the scale and rules defined in the Scoring Criteria.
+- Explain the reasoning in detail, including why the score was chosen.
+- Extract specific evidence from the document to support the reasoning. Evidence must be short, direct quotes or paraphrased excerpts, not general summaries.
+- If no relevant evidence exists, output an empty list for evidence and explain why in reasoning.
+- Output must be **valid JSON only**, with no extra text.
+
+Output structure:
+{
+    "score": float,
+    "reasoning": "string",
+    "evidence": ["string1", "string2"]
+}
+ """
+
 
 BATCH_EVALUATION_PROMPT = """
 You are an expert document evaluator. Evaluate the following document content against ALL the given criteria in a single comprehensive analysis.
+Each criterion includes:
+- **Criteria Name** – The title or label of the criterion.
+- **Weight** – The relative importance of the criterion in the overall evaluation.
+- **Description** – A detailed explanation of what the criterion measures.
+- **Definition** – Specifies the scoring scale and method to be used for evaluation.
+
 
 Rubric: {rubric_name}
-Domain: {domain}
+Description: {rubric_description}
 
 Criteria to Evaluate:
 {criteria_details}
@@ -17,30 +51,26 @@ Criteria to Evaluate:
 Document Content:
 {document_content}
 
-For EACH criterion, evaluate the document and provide:
-1. Score (1-5 based on the scoring criteria provided for that criterion)
-2. Detailed reasoning for the score
-3. Specific evidence from the document (with chunk references if applicable)
-4. Recommendations for improvement (if score < 5)
-5. Confidence level (0.0-1.0) in your evaluation
+INSTRUCTIONS:
+- Produce exactly one evaluation object for each criterion listed. Each evaluation.criterion_name must match the input criterion name exactly.
+- Score: numeric according to the criterion's scoring_scale (float). Use the scoring_definition provided for each criterion
+- Reasoning: provide a concise, detailed explanation for the score. If evidence is missing, explicitly state that in the reasoning.
+- Evidence: Extract specific evidence from the document to support the reasoning. Evidence must be short, direct quotes or paraphrased excerpts, not general summaries. If no evidence, return an empty array.
+- Holistic view: consider interactions between criteria and how they affect one another. Summarize these interactions in the "overall_reasoning" field.
+- **Output must be valid JSON only. No extra text, no comments, and no trailing commas.**
 
-Consider the relationships between criteria and provide a holistic evaluation that takes into account how different aspects of the document work together.
+OUTPUT JSON STRUCTURE:
+{
+  "evaluation": [
+    {
+      "criterion_name": "string",
+      "score": float,
+      "reasoning": "string",
+      "evidence": ["string1", "string2"]
+    }
+  ]
+}
 
-Output your response as JSON with the following structure:
-{{
-    "evaluations": [
-        {{
-            "criterion_id": "string",
-            "score": float,
-            "reasoning": "string",
-            "evidence": ["string1", "string2"],
-            "recommendations": ["string1", "string2"],
-            "confidence": float
-        }}
-    ]
-}}
-
-IMPORTANT: Include exactly one evaluation object for each criterion provided. Ensure all criterion_ids match exactly.
 """
 
 

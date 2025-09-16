@@ -15,14 +15,12 @@ class InvokeResponse(BaseModel):
 
 class CriterionEvaluation(BaseModel):
     """Model for individual criterion evaluation."""
-    criterion_id: str
+    criterion_name: str
     criterion_description: str
     weight: float
     score: float = Field(ge=1.0, le=5.0, description="Score from 1-5")
     reasoning: str
     evidence: List[str]
-    recommendations: List[str] = Field(default_factory=list)
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence level 0-1")
 
 
 class EvaluationRequest(BaseModel):

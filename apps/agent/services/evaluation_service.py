@@ -203,11 +203,11 @@ class EvaluationService:
 
             # Prepare criteria details
             criteria_details = "\n\n".join([
-                f"Criterion {i+1}: {criterion['criterion_id']}\n"
-                f"Description: {criterion['description']}\n"
+                f"Criterion: {criterion['criterion_id']}\n"
                 f"Weight: {criterion['weight']}\n"
-                f"Scoring Criteria: {criterion.get('scoring_criteria', {})}"
-                for i, criterion in enumerate(rubric_data["criteria"])
+                f"Description: {criterion['description']}\n"
+                f"Definition: {criterion.get('scoring_criteria', criterion.get('definition', 'Standard 1-5 scale'))}"
+                for criterion in rubric_data["criteria"]
             ])
 
             # Create evaluation chain
@@ -217,45 +217,43 @@ class EvaluationService:
             # Run evaluation
             batch_result = await chain.ainvoke({
                 "rubric_name": rubric_data["rubric_name"],
-                "domain": rubric_data.get("domain", "General"),
+                "rubric_description": rubric_data.get("description", ""),
                 "criteria_details": criteria_details,
                 "document_content": document_content
             })
 
             # Process results
             evaluations = []
-            results_by_id = {
-                eval_result["criterion_id"]: eval_result
-                for eval_result in batch_result["evaluations"]
+            results_by_name = {
+                eval_result["criterion_name"]: eval_result
+                for eval_result in batch_result["evaluation"]
             }
 
             for criterion in rubric_data["criteria"]:
                 criterion_id = criterion["criterion_id"]
-                if criterion_id in results_by_id:
-                    result = results_by_id[criterion_id]
+                criterion_name = criterion.get("name", criterion_id)  # Use name if available, fallback to ID
+
+                if criterion_name in results_by_name:
+                    result = results_by_name[criterion_name]
                     evaluation = CriterionEvaluation(
-                        criterion_id=criterion_id,
+                        criterion_name=criterion_name,
                         criterion_description=criterion["description"],
                         weight=criterion["weight"],
                         score=result["score"],
                         reasoning=result["reasoning"],
-                        evidence=result["evidence"],
-                        recommendations=result.get("recommendations", []),
-                        confidence=result.get("confidence", 0.8)
+                        evidence=result["evidence"]
                     )
                     evaluations.append(evaluation)
                 else:
                     # Create default evaluation
-                    logger.warning(f"Missing evaluation for criterion: {criterion_id}")
+                    logger.warning(f"Missing evaluation for criterion: {criterion_name}")
                     evaluation = CriterionEvaluation(
-                        criterion_id=criterion_id,
+                        criterion_name=criterion_name,
                         criterion_description=criterion["description"],
                         weight=criterion["weight"],
                         score=1.0,
                         reasoning="Evaluation not provided by model",
-                        evidence=[],
-                        recommendations=["Requires manual evaluation"],
-                        confidence=0.0
+                        evidence=[]
                     )
                     evaluations.append(evaluation)
 
@@ -282,7 +280,7 @@ class EvaluationService:
         try:
             overall_score = self._calculate_overall_score(criteria_evaluations)
             evaluations_summary = "\n".join([
-                f"- {eval.criterion_id}: {eval.score}/5.0 - {eval.reasoning[:100]}..."
+                f"- {eval.criterion_name}: {eval.score}/5.0 - {eval.reasoning[:100]}..."
                 for eval in criteria_evaluations
             ])
 
@@ -319,15 +317,14 @@ class EvaluationService:
         """Create stub evaluations when LLM is not available."""
         evaluations = []
         for criterion in rubric_data["criteria"]:
+            criterion_name = criterion.get("name", criterion["criterion_id"])
             evaluation = CriterionEvaluation(
-                criterion_id=criterion["criterion_id"],
+                criterion_name=criterion_name,
                 criterion_description=criterion["description"],
                 weight=criterion["weight"],
                 score=3.0,  # Default middle score
-                reasoning=f"Stub evaluation for {criterion['criterion_id']}",
-                evidence=["Placeholder evidence"],
-                recommendations=["Placeholder recommendation"],
-                confidence=0.5
+                reasoning=f"Stub evaluation for {criterion_name}",
+                evidence=["Placeholder evidence"]
             )
             evaluations.append(evaluation)
         return evaluations
