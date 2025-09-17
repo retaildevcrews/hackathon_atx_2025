@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from routes import invoke as invoke_route
+from routes import evaluate as evaluate_route
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ async def version() -> dict[str, str]:
 
 
 app.include_router(invoke_route.router)
+app.include_router(evaluate_route.router)
 
 
 @app.get("/healthz")

@@ -1,11 +1,52 @@
 # Agent Service
 
-Minimal FastAPI service providing an `/invoke` endpoint backed by Azure OpenAI via LangChain (or a stub if not configured) and a `/version` endpoint. Incorporates a stubbed Azure Cognitive Search enrichment (first result snippet appended when configured).
+Minimal FastAPI service providing:
+
+- `/invoke` endpoint backed by Azure OpenAI via LangChain (or a stub if not configured)
+- `/evaluate_rubric` endpoint performing rubric-based PDF evaluation (one LLM call per criterion)
+- `/version` endpoint
+- `/healthz` endpoint
+
+It also includes a stubbed Azure Cognitive Search enrichment (first result snippet appended when configured).
 
 ## Endpoints
 
 - `GET /version` - returns service name and version
 - `POST /invoke` - JSON body `{ "prompt": "..." }` returns `{ "output": "...", "model": "<deployment>", "stub": true|false }`
+- `POST /evaluate_rubric` - JSON body:
+
+  ```json
+  {
+    "document_url": null,
+    "rubric_name": "tv_rubric",
+    "model_params": {"temperature": 0},
+    "max_concurrency": 5
+  }
+  ```
+
+  Example truncated response:
+
+  ```json
+  {
+    "rubric_id": "tv_rubric",
+    "rubric_name": "tv_rubric",
+    "criteria": [
+      {
+        "criterion_id": "picture-quality",
+        "criterion_name": "Picture Quality",
+        "criterion_description": "Measures resolution, contrast, color accuracy, and HDR support.",
+        "criterion_definition": {"Excellent (5)": "OLED/QLED, 4K/8K, HDR10+, Dolby Vision"},
+        "weight": "20%",
+        "score": 5,
+        "reasoning": "...",
+        "evidence": "\"OLED panel with HDR10+ support\"",
+        "document_chunk": null
+      }
+    ],
+    "model_params": {"temperature": 0},
+    "system_prompt_template": "You are an expert document evaluator..."
+  }
+  ```json
 - `GET /healthz` - basic health probe
 
 ## Environment Variables (.env)
@@ -19,11 +60,13 @@ Required for real model invocation:
 - `AZURE_OPENAI_DEPLOYMENT` (chat/completions deployment name)
 - `AZURE_OPENAI_API_VERSION` (default 2024-02-01)
 
-If any are missing, responses are stubbed.
+If any are missing, `/invoke` responses are stubbed. The `/evaluate_rubric` endpoint will return 500 (LLM required) per design.
+
+Note: `/evaluate_rubric` bypasses LangChain and uses the Azure OpenAI client directly, sending the PDF as a base64-encoded `input_file` content block alongside textual instructions.
 
 Optional Azure Cognitive Search (stubbed if incomplete):
 
-- `AZURE_SEARCH_ENDPOINT` (e.g. https://<your-search>.search.windows.net)
+- `AZURE_SEARCH_ENDPOINT` (e.g. <https://your-search-name.search.windows.net>)
 - `AZURE_SEARCH_API_KEY`
 - `AZURE_SEARCH_INDEX`
 
@@ -60,11 +103,13 @@ config.py
 main.py
 models/
   invoke.py
+  evaluate.py
 routes/
   invoke.py
 services/
   search_service.py
   chain_service.py
+  evaluation_service.py
 ```
 
 ## Code Quality / Linting
