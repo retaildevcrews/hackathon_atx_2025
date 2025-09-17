@@ -8,6 +8,7 @@ from app.models import rubric_orm  # ensure rubric table
 from app.models import rubric_criterion_orm  # ensure assoc table
 from app.models import decision_kit_orm  # ensure decision kit tables
 from app.models import candidate_orm  # ensure candidate table
+from app.models import evaluation_result_orm  # ensure evaluation result tables
 from sqlalchemy import text
 from app.seed.seed_data import seed
 from app.config import settings
