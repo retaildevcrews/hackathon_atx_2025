@@ -46,12 +46,13 @@ async def evaluate_candidates(
             )
 
         # Call unified evaluation method
+        # Use default settings for simple evaluation
         result = await evaluation_service.evaluate(
             rubric_id=request.rubric_id,
             candidate_ids=request.candidate_ids,
-            comparison_mode=request.comparison_mode,
-            ranking_strategy=request.ranking_strategy,
-            max_chunks=request.max_chunks
+            comparison_mode=ComparisonMode.DETERMINISTIC,
+            ranking_strategy=RankingStrategy.OVERALL_SCORE,
+            max_chunks=5
         )
 
         if "error" in result:
@@ -169,40 +170,45 @@ async def get_rubric_details(
         )
 
 
+from pydantic import BaseModel
+
+class SimpleEvaluationRequest(BaseModel):
+    """Simple evaluation request model."""
+    rubric_id: str
+    candidate_ids: list[str]
+
 @router.post("/simple")
 async def simple_evaluate(
-    rubric_id: str,
-    candidate_ids: list[str],
+    request: SimpleEvaluationRequest,
     evaluation_service: EvaluationService = Depends(get_evaluation_service)
 ) -> Dict[str, str]:
     """Simple evaluation endpoint - just returns evaluation ID.
-    
+
     Args:
-        rubric_id: ID of the rubric to use for evaluation
-        candidate_ids: List of candidate IDs to evaluate
+        request: Simple evaluation request with rubric_id and candidate_ids
         evaluation_service: Injected evaluation service
-        
+
     Returns:
         Dictionary with evaluation_id on success or error on failure
     """
     try:
         # Use default settings for simple evaluation
         result = await evaluation_service.evaluate(
-            rubric_id=rubric_id,
-            candidate_ids=candidate_ids,
+            rubric_id=request.rubric_id,
+            candidate_ids=request.candidate_ids,
             comparison_mode=ComparisonMode.DETERMINISTIC,
             ranking_strategy=RankingStrategy.OVERALL_SCORE,
             max_chunks=5
         )
-        
+
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-            
+
         if "evaluation_id" not in result:
             raise HTTPException(status_code=500, detail="Evaluation completed but no ID returned")
-            
+
         return {"evaluation_id": result["evaluation_id"]}
-        
+
     except HTTPException:
         raise
     except Exception as e:
