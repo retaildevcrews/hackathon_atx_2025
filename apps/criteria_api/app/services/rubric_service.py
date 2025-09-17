@@ -30,6 +30,17 @@ def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEnt
     normalized: List[RubricCriteriaEntry] = []
     for idx, e in enumerate(entries):
         cid = e.criteriaId
+        # Initialize missing or blank criteria IDs by creating a new criteria row
+        if not cid or str(cid).strip() in ("", "null", "undefined"):
+            # Require a name to create new criteria; fall back to a generated placeholder if absent
+            new_name = e.name or f"Untitled Criterion {idx+1}"
+            new_desc = e.description or ""
+            new_def = e.definition or ""
+            new_cid = str(uuid.uuid4())
+            new_orm = CriteriaORM(id=new_cid, name=new_name, description=new_desc, definition=new_def)
+            db.add(new_orm)
+            db.flush()
+            cid = new_cid
         if cid in ids_seen:
             raise RubricValidationError("DUPLICATE_CRITERIA", criteria_id=cid, index=idx)
         ids_seen.add(cid)
@@ -132,8 +143,35 @@ def create_rubric(data: RubricCreate) -> Rubric:
     norm = _normalize_name(data.name)
     existing = db.query(RubricORM).filter(RubricORM.name_normalized == norm).first()
     if existing:
+        # Upsert behavior: if an unpublished rubric with the same name exists, update it instead of erroring
+        if existing.published:
+            db.close()
+            raise ValueError("rubric name exists and is published")
+        # Update existing draft rubric
+        normalized_entries = _normalize_and_validate_entries(db, data.criteria)
+        # Keep display and normalized names in sync with the latest payload
+        existing.name_original = data.name
+        existing.name_normalized = norm
+        if data.description is not None:
+            existing.description = data.description
+        # Replace association rows
+        for assoc in list(existing.criteria_assoc):
+            db.delete(assoc)
+        existing.criteria_assoc = []
+        db.flush()
+        for pos, entry in enumerate(normalized_entries):
+            existing.criteria_assoc.append(RubricCriterionORM(
+                id=str(uuid.uuid4()),
+                rubric_id=existing.id,
+                criterion_id=entry.criteriaId,
+                position=pos,
+                weight=entry.weight,
+            ))
+        existing.updated_at = datetime.now(timezone.utc)
+        db.commit(); db.refresh(existing)
+        rubric = _serialize_rubric(existing, db)
         db.close()
-        raise ValueError("rubric name exists")
+        return rubric
     normalized_entries = _normalize_and_validate_entries(db, data.criteria)
     rid = str(uuid.uuid4())
     orm = RubricORM(
@@ -168,8 +206,7 @@ def update_rubric(rubric_id: str, data: RubricUpdate) -> Optional[Rubric]:
     orm = db.query(RubricORM).filter(RubricORM.id == rubric_id).first()
     if not orm:
         db.close(); return None
-    if orm.published:
-        db.close(); raise ValueError("rubric immutable")
+    # In-place upsert: apply updates regardless of published state
     if data.description is not None:
         orm.description = data.description
     if data.criteria is not None:
