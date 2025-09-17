@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import { useDeleteDecisionKit } from '../../hooks/useDeleteDecisionKit';
 import { DeleteDecisionKitDialog } from './DeleteDecisionKitDialog';
@@ -37,7 +38,7 @@ export const DeleteKitButton: React.FC<DeleteKitButtonProps> = ({ kitId, kitName
 
   return (
     <>
-      <Button color="error" variant="outlined" onClick={() => setOpen(true)} size="small">Delete</Button>
+  <Button color="error" variant="outlined" onClick={() => setOpen(true)} size="small" startIcon={<DeleteIcon />}>Delete</Button>
       <DeleteDecisionKitDialog
         open={open}
         kitName={kitName}
