@@ -3,32 +3,77 @@
 This React app allows users to manage document analysis criteria and build rubrics composed of multiple criteria. It integrates with backend APIs for full CRUD operations.
 
 ## Features
+
+### Navigation
+
+- Responsive navigation drawer with quick access to Decision Kits and Rubrics
+- Mobile-friendly collapsible sidebar
+
+### Criteria Management
+
 - Add, view, edit, and delete criteria
-- Create, view, edit, and delete rubrics (collections of criteria)
-- Select criteria when building a rubric
 - Form validation and user feedback
-- Responsive UI with Material UI
+
+### Rubric Management (NEW)
+
+- **Standalone Rubric Pages**: Dedicated interface for managing rubrics
+- **Full CRUD Operations**: Create, view, edit, and delete rubrics
+- **Criteria Selection**: Build rubrics by selecting from available criteria
+- **Search & Filter**: Find rubrics quickly with built-in search
+- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+- **Delete Protection**: Confirmation dialogs with cascade warnings
+
+### Decision Kit Integration
+
+- Create and manage decision kits with rubric associations
+- View decision kit details and associated rubrics
 
 ## Usage
+
 1. Install dependencies:
+
    ```sh
    yarn install
    ```
+
 2. Start the development server:
+
    ```sh
    yarn dev
    ```
+
 3. Access the app at `http://localhost:5173` (default Vite port)
 
 ## API Integration
+
 - Criteria API: `/api/criteria` (GET, POST, PUT, DELETE)
 - Rubric API: `/api/rubrics` (GET, POST, PUT, DELETE)
 
+## Routes
+
+### Decision Kits
+
+- `/` — Decision kit list (cards) + New Decision Kit button
+- `/decision-kits/new` — Create decision kit form
+- `/decision-kits/:kitId` — Decision kit detail view
+
+### Rubrics (NEW)
+
+- `/rubrics` — Rubrics list with search and CRUD actions
+- `/rubrics/new` — Create rubric form with criteria selection
+- `/rubrics/:id` — Rubric detail view showing all criteria
+- `/rubrics/:id/edit` — Edit rubric form
+
 ## Project Structure
 - `src/components/` — UI components for criteria and rubrics
+  - `src/components/navigation/` — Navigation drawer component
+- `src/pages/` — Route-level components
+  - `src/pages/decision-kits/` — Decision kit pages
+  - `src/pages/rubrics/` — Rubric management pages (NEW)
+  - `src/pages/layout/` — App layout with navigation
 - `src/hooks/` — Custom hooks for API integration
 - `src/types/` — TypeScript interfaces
-- `src/pages/App.tsx` — Main app layout
+- `src/api/` — API service modules with full CRUD operations
 
 ## Decision Kits UI (New)
 
