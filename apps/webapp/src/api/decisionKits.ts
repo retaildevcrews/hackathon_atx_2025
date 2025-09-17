@@ -69,4 +69,14 @@ export function addKitToCacheList(local: DecisionKitListItem[] | null, kit: Deci
 export function removeKitFromCacheList(local: DecisionKitListItem[] | null, id: string): DecisionKitListItem[] | null {
   if (!local) return local;
   return local.filter(k => k.id !== id);
+
+}
+
+// Assign a rubric to a decision kit and return the updated kit
+export async function assignRubricToDecisionKit(kitId: string, rubricId: string): Promise<DecisionKitDetail> {
+  if (!kitId || !rubricId) throw new Error('kitId and rubricId are required');
+  const res = await api.patch<DecisionKitDetail>(`/decision-kits/${encodeURIComponent(kitId)}`, { rubricId });
+  const updated = res.data;
+  detailCache.set(updated.id, updated);
+  return updated;
 }

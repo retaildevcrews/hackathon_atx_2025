@@ -7,6 +7,9 @@ import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
+import { AttachRubricForm } from '../../components/AttachRubricForm';
+import { fetchRubricSummary } from '../../api/rubrics';
+import { assignRubricToDecisionKit } from '../../api/decisionKits';
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
@@ -14,9 +17,11 @@ export const DecisionKitDetailPage: React.FC = () => {
   const rubricId = kit?.rubric?.id || kit?.rubricId;
   const needsRubricFetch = !kit?.rubric && !!rubricId;
   const { rubric, loading: rubricLoading, error: rubricError, retry: retryRubric } = useRubricSummary(needsRubricFetch ? rubricId : undefined);
-  const effectiveRubric = kit?.rubric || rubric;
+  const [attachedRubric, setAttachedRubric] = useState<any | null>(null);
+  const effectiveRubric = attachedRubric || kit?.rubric || rubric;
   const [rubricOpen, setRubricOpen] = useState(true);
   const [candidatesOpen, setCandidatesOpen] = useState(true);
+  // const [attachError, setAttachError] = useState<string | null>(null);
 
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[DecisionKitDetail] kitId', kitId, 'needsRubricFetch', needsRubricFetch, 'rubricId', rubricId);
@@ -65,7 +70,26 @@ export const DecisionKitDetailPage: React.FC = () => {
             <Skeleton variant="rectangular" height={60} sx={{ mt: 1 }} />
           </>
         ) : (
-          <Typography variant="body2">No rubric data available.</Typography>
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1 }}>No rubric data available. Attach one to get started.</Typography>
+            {kit && (
+              <AttachRubricForm
+                onAttach={async (rid: string) => {
+                  const updated = await assignRubricToDecisionKit(kit.id, rid);
+                  if (updated && (updated as any).rubric) {
+                    setAttachedRubric((updated as any).rubric);
+                  } else {
+                    try {
+                      const summary = await fetchRubricSummary(rid);
+                      setAttachedRubric(summary as any);
+                    } catch {
+                      // ignore fetch errors here; leave UI as-is
+                    }
+                  }
+                }}
+              />
+            )}
+          </Box>
         ))}
         <Collapse in={rubricOpen} unmountOnExit timeout="auto">
           {effectiveRubric && (
