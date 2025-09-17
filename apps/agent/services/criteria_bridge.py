@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class CriteriaAPIBridge:
     """Bridge service to connect agent evaluation with criteria_api."""
 
-    def __init__(self, criteria_api_base_url: str = "http://localhost:8001"):
+    def __init__(self, criteria_api_base_url: str = "http://localhost:8000"):
         """Initialize bridge service.
 
         Args:
@@ -173,5 +173,5 @@ class CriteriaAPIBridge:
 def get_criteria_api_bridge() -> CriteriaAPIBridge:
     """Get singleton criteria API bridge instance."""
     settings = get_settings()
-    
+
     return CriteriaAPIBridge(settings.criteria_api_url)

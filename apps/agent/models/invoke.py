@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+from enum import Enum
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +13,69 @@ class InvokeResponse(BaseModel):
     output: str
     model: str | None = None
     stub: bool | None = None
+
+
+class ComparisonMode(str, Enum):
+    """Different modes for comparing multiple documents."""
+    DETERMINISTIC = "deterministic"  # Rule-based analysis
+    LLM_ENHANCED = "llm_enhanced"    # LLM + deterministic
+    LLM_ONLY = "llm_only"           # Pure LLM analysis
+
+
+class RankingStrategy(str, Enum):
+    """Different strategies for ranking documents."""
+    OVERALL_SCORE = "overall_score"          # Weighted average
+    CONSISTENCY = "consistency"              # Lowest std deviation
+    PEAK_PERFORMANCE = "peak_performance"    # Highest individual criteria scores
+    BALANCED = "balanced"                    # Best across all criteria
+
+
+class DocumentInput(BaseModel):
+    """Input model for a single document in batch evaluation."""
+    document_id: str = Field(..., description="Unique identifier for the document")
+    document_text: str = Field(..., description="Document text content to evaluate")
+    metadata: Optional[Dict[str, str]] = Field(default_factory=dict, description="Optional document metadata")
+
+
+class StatisticalSummary(BaseModel):
+    """Statistical analysis of evaluation results."""
+    mean_score: float = Field(description="Average score across all documents")
+    median_score: float = Field(description="Median score across all documents")
+    std_deviation: float = Field(description="Standard deviation of scores")
+    score_range: Tuple[float, float] = Field(description="Min and max scores")
+    outliers: List[str] = Field(default_factory=list, description="Document IDs with outlier scores")
+
+
+class CriteriaAnalysis(BaseModel):
+    """Analysis of performance for a specific criterion across documents."""
+    criterion_name: str = Field(description="Name of the criterion")
+    best_document_id: str = Field(description="Document with highest score for this criterion")
+    worst_document_id: str = Field(description="Document with lowest score for this criterion")
+    score_spread: float = Field(description="Difference between highest and lowest scores")
+    average_score: float = Field(description="Average score for this criterion")
+    performance_trend: str = Field(description="consistent, varied, or polarized")
+
+
+class DocumentRanking(BaseModel):
+    """Ranking information for a single document."""
+    document_id: str = Field(description="Document identifier")
+    rank: int = Field(description="Rank position (1 = best)")
+    overall_score: float = Field(ge=1.0, le=5.0, description="Overall weighted score")
+    key_strengths: List[str] = Field(default_factory=list, description="Top performing criteria")
+    key_weaknesses: List[str] = Field(default_factory=list, description="Lowest performing criteria")
+    score_breakdown: Dict[str, float] = Field(default_factory=dict, description="Score by criterion")
+
+
+class ComparisonSummary(BaseModel):
+    """Summary of cross-document comparison analysis."""
+    best_document: DocumentRanking = Field(description="Top-ranked document")
+    rankings: List[DocumentRanking] = Field(description="All documents ranked")
+    statistical_summary: StatisticalSummary = Field(description="Statistical analysis")
+    criteria_analysis: List[CriteriaAnalysis] = Field(description="Per-criterion analysis")
+    cross_document_insights: str = Field(description="Insights from comparing documents")
+    recommendation_rationale: str = Field(description="Why the best document was chosen")
+    analysis_method: ComparisonMode = Field(description="Method used for analysis")
+
 
 class CriterionEvaluation(BaseModel):
     """Model for individual criterion evaluation."""
@@ -31,6 +95,15 @@ class EvaluationRequest(BaseModel):
     max_chunks: int = Field(default=10, description="Maximum chunks to retrieve")
 
 
+class BatchEvaluationRequest(BaseModel):
+    """Request model for batch document evaluation."""
+    documents: List[DocumentInput] = Field(..., description="List of documents to evaluate")
+    rubric_name: str = Field(..., description="Name or ID of rubric to use")
+    comparison_mode: ComparisonMode = Field(default=ComparisonMode.DETERMINISTIC, description="Comparison analysis method")
+    ranking_strategy: RankingStrategy = Field(default=RankingStrategy.OVERALL_SCORE, description="Strategy for ranking documents")
+    max_chunks: int = Field(default=10, description="Maximum chunks to retrieve per document")
+
+
 class EvaluationResult(BaseModel):
     """Model for complete evaluation result from agent."""
     overall_score: float = Field(ge=1.0, le=5.0, description="Overall weighted score")
@@ -43,10 +116,26 @@ class EvaluationResult(BaseModel):
     agent_metadata: Dict[str, Optional[str]] = Field(default_factory=dict)
 
 
+class BatchEvaluationResult(BaseModel):
+    """Model for complete batch evaluation result."""
+    rubric_name: str = Field(description="Rubric used for evaluation")
+    total_documents: int = Field(description="Number of documents evaluated")
+    individual_results: List[EvaluationResult] = Field(description="Individual evaluation results")
+    comparison_summary: ComparisonSummary = Field(description="Cross-document comparison analysis")
+    batch_metadata: Dict[str, Optional[str]] = Field(default_factory=dict, description="Batch processing metadata")
+
+
 class EvaluationResponse(BaseModel):
     """Response model for evaluation endpoint."""
     status: str = Field(description="Success or error status")
     evaluation: Optional[EvaluationResult] = None
+    error: Optional[str] = None
+
+
+class BatchEvaluationResponse(BaseModel):
+    """Response model for batch evaluation endpoint."""
+    status: str = Field(description="Success or error status")
+    batch_result: Optional[BatchEvaluationResult] = None
     error: Optional[str] = None
 
 

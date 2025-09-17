@@ -3,13 +3,22 @@ LangChain-based evaluation service for document assessment against rubrics.
 Uses criteria_api service for rubric and criteria data.
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
-from models.invoke import CriterionEvaluation, EvaluationResult
+from models.invoke import (
+    CriterionEvaluation,
+    EvaluationResult,
+    DocumentInput,
+    BatchEvaluationResult,
+    ComparisonMode,
+    RankingStrategy
+)
 from services.criteria_bridge import CriteriaAPIBridge, get_criteria_api_bridge
 from services.search_service import AzureSearchService
+from services.deterministic_analyzer import DeterministicComparison, get_deterministic_analyzer
 from prompts.evaluation_prompts import get_batch_evaluation_template, get_summary_template
 from config import get_settings
 
@@ -23,6 +32,7 @@ class EvaluationService:
         self,
         criteria_bridge: CriteriaAPIBridge,
         search_service: AzureSearchService,
+        deterministic_analyzer: Optional[DeterministicComparison] = None,
         llm: Optional[Any] = None
     ):
         """Initialize evaluation service.
@@ -30,10 +40,12 @@ class EvaluationService:
         Args:
             criteria_bridge: Bridge service for criteria_api integration
             search_service: Azure Search service for document chunks
+            deterministic_analyzer: Deterministic comparison analyzer
             llm: LangChain LLM instance (will create if None)
         """
         self.criteria_bridge = criteria_bridge
         self.search_service = search_service
+        self.deterministic_analyzer = deterministic_analyzer or get_deterministic_analyzer()
         self.settings = get_settings()
 
         # Initialize LLM if not provided
@@ -145,6 +157,174 @@ class EvaluationService:
                 "criteria_evaluations": [],
                 "summary": f"Evaluation failed: {e}"
             }
+
+    async def evaluate_document_batch(
+        self,
+        documents: List[DocumentInput],
+        rubric_name: str,
+        comparison_mode: ComparisonMode = ComparisonMode.DETERMINISTIC,
+        ranking_strategy: RankingStrategy = RankingStrategy.OVERALL_SCORE,
+        max_chunks: int = 10
+    ) -> Dict[str, Any]:
+        """Evaluate multiple documents against a rubric and compare results.
+
+        Args:
+            documents: List of documents to evaluate
+            rubric_name: Name of rubric to use
+            comparison_mode: Method for comparing documents (deterministic, LLM, etc.)
+            ranking_strategy: Strategy for ranking documents
+            max_chunks: Maximum chunks to retrieve per document
+
+        Returns:
+            Batch evaluation results dictionary
+        """
+        try:
+            logger.info(f"Starting batch evaluation of {len(documents)} documents with rubric '{rubric_name}'")
+
+            # Step 1: Validate inputs
+            if not documents:
+                return {
+                    "error": "No documents provided for evaluation",
+                    "batch_result": None
+                }
+
+            if len(documents) > 20:  # Reasonable limit
+                return {
+                    "error": f"Too many documents ({len(documents)}). Maximum is 20 per batch.",
+                    "batch_result": None
+                }
+
+            # Step 2: Evaluate each document in parallel
+            logger.info("Evaluating individual documents in parallel...")
+            individual_results = await self._evaluate_documents_parallel(
+                documents, rubric_name, max_chunks
+            )
+
+            # Check if any evaluations failed
+            failed_evaluations = [r for r in individual_results if "error" in r]
+            if failed_evaluations:
+                error_summary = f"{len(failed_evaluations)}/{len(documents)} evaluations failed"
+                logger.warning(error_summary)
+                # Continue with successful evaluations if any exist
+                successful_results = [r for r in individual_results if "error" not in r]
+                if not successful_results:
+                    return {
+                        "error": f"All document evaluations failed. First error: {failed_evaluations[0]['error']}",
+                        "batch_result": None
+                    }
+                individual_results = successful_results
+
+            # Convert dict results to EvaluationResult objects
+            evaluation_results = []
+            for result_dict in individual_results:
+                if "error" not in result_dict:
+                    # Convert dict to EvaluationResult for analysis
+                    eval_result = EvaluationResult(**result_dict)
+                    evaluation_results.append(eval_result)
+
+            # Step 3: Perform cross-document comparison analysis
+            logger.info(f"Performing {comparison_mode.value} comparison analysis...")
+            comparison_summary = await self._perform_comparison_analysis(
+                evaluation_results, comparison_mode, ranking_strategy
+            )
+
+            # Step 4: Build batch result
+            batch_result = BatchEvaluationResult(
+                rubric_name=rubric_name,
+                total_documents=len(documents),
+                individual_results=evaluation_results,
+                comparison_summary=comparison_summary,
+                batch_metadata={
+                    "comparison_mode": comparison_mode.value,
+                    "ranking_strategy": ranking_strategy.value,
+                    "documents_processed": str(len(evaluation_results)),
+                    "documents_failed": str(len(failed_evaluations)) if failed_evaluations else "0",
+                    "evaluation_model": "langchain-azure-openai" if self.llm else "stub"
+                }
+            )
+
+            logger.info(f"Batch evaluation completed successfully for {len(evaluation_results)} documents")
+            return batch_result.dict()
+
+        except Exception as e:
+            logger.error(f"Error during batch evaluation: {e}")
+            return {
+                "error": str(e),
+                "batch_result": None
+            }
+
+    async def _evaluate_documents_parallel(
+        self,
+        documents: List[DocumentInput],
+        rubric_name: str,
+        max_chunks: int
+    ) -> List[Dict[str, Any]]:
+        """Evaluate multiple documents in parallel for better performance."""
+
+        # Create evaluation tasks for all documents
+        tasks = []
+        for doc in documents:
+            task = self.evaluate_document(
+                document_text=doc.document_text,
+                rubric_name=rubric_name,
+                document_id=doc.document_id,
+                max_chunks=max_chunks
+            )
+            tasks.append(task)
+
+        # Execute all evaluations in parallel
+        logger.info(f"Executing {len(tasks)} document evaluations in parallel...")
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Handle any exceptions
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Document {documents[i].document_id} evaluation failed: {result}")
+                processed_results.append({
+                    "error": str(result),
+                    "document_id": documents[i].document_id
+                })
+            else:
+                processed_results.append(result)
+
+        return processed_results
+
+    async def _perform_comparison_analysis(
+        self,
+        results: List[EvaluationResult],
+        comparison_mode: ComparisonMode,
+        ranking_strategy: RankingStrategy
+    ) -> Any:
+        """Perform comparison analysis based on the specified mode."""
+
+        if comparison_mode == ComparisonMode.DETERMINISTIC:
+            # Use deterministic rule-based analysis
+            return self.deterministic_analyzer.analyze(results, ranking_strategy)
+
+        elif comparison_mode == ComparisonMode.LLM_ENHANCED:
+            # Combine deterministic analysis with LLM insights
+            deterministic_analysis = self.deterministic_analyzer.analyze(results, ranking_strategy)
+
+            if self.llm is not None:
+                # TODO: Add LLM enhancement in future iteration
+                logger.warning("LLM enhancement not yet implemented, using deterministic only")
+
+            return deterministic_analysis
+
+        elif comparison_mode == ComparisonMode.LLM_ONLY:
+            # Pure LLM-based analysis
+            if self.llm is not None:
+                # TODO: Implement LLM-only comparison in future iteration
+                logger.warning("LLM-only comparison not yet implemented, falling back to deterministic")
+                return self.deterministic_analyzer.analyze(results, ranking_strategy)
+            else:
+                logger.warning("LLM not available, falling back to deterministic analysis")
+                return self.deterministic_analyzer.analyze(results, ranking_strategy)
+
+        else:
+            # Default to deterministic
+            return self.deterministic_analyzer.analyze(results, ranking_strategy)
 
     async def _retrieve_chunks(
         self,
@@ -339,5 +519,6 @@ def get_evaluation_service() -> EvaluationService:
     """Get singleton evaluation service instance."""
     criteria_bridge = get_criteria_api_bridge()
     search_service = AzureSearchService()
+    deterministic_analyzer = get_deterministic_analyzer()
 
-    return EvaluationService(criteria_bridge, search_service)
+    return EvaluationService(criteria_bridge, search_service, deterministic_analyzer)

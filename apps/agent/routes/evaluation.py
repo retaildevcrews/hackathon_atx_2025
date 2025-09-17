@@ -8,7 +8,9 @@ from typing import Dict, Any
 from models.invoke import (
     EvaluationRequest,
     EvaluationResponse,
-    RubricsListResponse
+    RubricsListResponse,
+    BatchEvaluationRequest,
+    BatchEvaluationResponse
 )
 from services.evaluation_service import EvaluationService, get_evaluation_service
 
@@ -59,6 +61,73 @@ async def evaluate_document(
         raise HTTPException(
             status_code=500,
             detail=f"Evaluation failed: {str(e)}"
+        )
+
+
+@router.post("/evaluate-batch", response_model=BatchEvaluationResponse)
+async def evaluate_document_batch(
+    request: BatchEvaluationRequest,
+    evaluation_service: EvaluationService = Depends(get_evaluation_service)
+) -> BatchEvaluationResponse:
+    """Evaluate multiple documents against a rubric and compare results.
+
+    Args:
+        request: Batch evaluation request with documents, rubric, and comparison settings
+        evaluation_service: Injected evaluation service
+
+    Returns:
+        Batch evaluation results with individual scores and cross-document analysis
+    """
+    try:
+        # Validate request
+        if not request.documents:
+            return BatchEvaluationResponse(
+                status="error",
+                error="No documents provided for evaluation"
+            )
+
+        if len(request.documents) > 20:
+            return BatchEvaluationResponse(
+                status="error",
+                error=f"Too many documents ({len(request.documents)}). Maximum is 20 per batch."
+            )
+
+        # Validate document IDs are unique
+        document_ids = [doc.document_id for doc in request.documents]
+        if len(document_ids) != len(set(document_ids)):
+            return BatchEvaluationResponse(
+                status="error",
+                error="Document IDs must be unique within a batch"
+            )
+
+        # Perform batch evaluation
+        result = await evaluation_service.evaluate_document_batch(
+            documents=request.documents,
+            rubric_name=request.rubric_name,
+            comparison_mode=request.comparison_mode,
+            ranking_strategy=request.ranking_strategy,
+            max_chunks=request.max_chunks
+        )
+
+        if "error" in result:
+            return BatchEvaluationResponse(
+                status="error",
+                error=result["error"]
+            )
+
+        # Convert dict to BatchEvaluationResult model
+        from models.invoke import BatchEvaluationResult
+        batch_result = BatchEvaluationResult(**result)
+
+        return BatchEvaluationResponse(
+            status="success",
+            batch_result=batch_result
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch evaluation failed: {str(e)}"
         )
 
 
