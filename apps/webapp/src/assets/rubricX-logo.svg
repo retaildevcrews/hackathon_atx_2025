@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="480" viewBox="0 0 1400 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RubricX wordmark with question-to-answer arrow (10% shorter)">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+
+  <defs>
+    <!-- Larger arrowhead, blue -->
+    <marker id="arrowhead" markerWidth="28" markerHeight="28" refX="14" refY="14" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L28,14 L0,28 Z" fill="#2D9CDB"/>
+    </marker>
+  </defs>
+
+  <!-- Wordmark -->
+  <g transform="translate(160,180)">
+    <text x="0" y="0"
+          style="font:800 120px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; letter-spacing:0px;"
+          dominant-baseline="alphabetic">
+      <tspan fill="#0E1116">Rubric</tspan>
+      <tspan fill="#00C27A" font-size="140" dy="-6">X</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow and icons (kept close to wordmark) -->
+  <g transform="translate(160,220)">
+    <!-- Question mark inside blue circle -->
+    <g id="qmark" transform="translate(0,0)">
+      <circle cx="0" cy="8" r="28" fill="#FFFFFF" stroke="#2D9CDB" stroke-width="6"/>
+      <text x="0" y="8"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            style="font:800 40px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill:#2D9CDB;">?</text>
+    </g>
+
+    <!-- Shortened arrow (~10% shorter than previous) -->
+    <!-- Previous length ~472px (x1=30 → x2=502). New length ~425px (x1=30 → x2=455). -->
+    <line x1="30" y1="8" x2="455" y2="8"
+          stroke="#2D9CDB" stroke-width="12" stroke-linecap="round"
+          marker-end="url(#arrowhead)"/>
+
+    <!-- Check mark inside blue circle, repositioned to sit after the arrowhead -->
+    <g id="check" transform="translate(475,-6)">
+      <circle cx="27" cy="18" r="36" fill="#FFFFFF" stroke="#2D9CDB" stroke-width="6"/>
+      <!-- Smaller checkmark (blue) -->
+      <path d="M6 20 L20 34 L42 8" fill="none" stroke="#2D9CDB" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>
