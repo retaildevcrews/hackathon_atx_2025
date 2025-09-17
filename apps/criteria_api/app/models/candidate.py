@@ -8,8 +8,6 @@ _NAME_PATTERN = re.compile(r"^[A-Za-z0-9 _.-]+$")
 
 class CandidateCreate(BaseModel):
     """Payload for creating a candidate.
-
-    Mirrors legacy candidate_api contract so existing clients remain compatible.
     """
     name: str = Field(..., description="Display name (2-80 chars, limited charset)")
     description: Optional[str] = Field(None, description="Optional description")
@@ -26,8 +24,6 @@ class CandidateCreate(BaseModel):
 
 class Candidate(BaseModel):
     """Candidate response model.
-
-    Field naming intentionally preserves camelCase used by the previous standalone service.
     """
     id: str
     name: str
