@@ -1,5 +1,6 @@
 import React from 'react';
 import { Grid, Card, CardActionArea, CardContent, Typography, Skeleton, Box, Alert, Button, Stack } from '@mui/material';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import { useNavigate } from 'react-router-dom';
 import { useDecisionKits } from '../../hooks/useDecisionKits';
 
@@ -17,7 +18,7 @@ export const DecisionKitListPage: React.FC = () => {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>Decision Kits</Typography>
-        <Button variant="contained" color="primary" onClick={() => navigate('/decision-kits/new')}>New Decision Kit</Button>
+  <Button variant="contained" color="primary" startIcon={<CreateNewFolderIcon />} onClick={() => navigate('/decision-kits/new')}>New Decision Kit</Button>
       </Stack>
       <Grid container spacing={2}>
         {loading && !kits && skeletonArray.map((_, idx) => (
