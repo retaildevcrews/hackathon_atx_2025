@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     azure_search_index: str | None = Field(default=None, alias="AZURE_SEARCH_INDEX")
 
     # Criteria API integration
-    criteria_api_url: str = Field(default="http://localhost:8001", alias="CRITERIA_API_URL")
+    # Default to local criteria_api dev port; override in container with http://criteria_api:8000
+    criteria_api_url: str = Field(default="http://localhost:8000", alias="CRITERIA_API_URL")
 
     # Evaluation configuration
     max_evaluation_chunks: int = Field(default=10, alias="MAX_EVALUATION_CHUNKS")
