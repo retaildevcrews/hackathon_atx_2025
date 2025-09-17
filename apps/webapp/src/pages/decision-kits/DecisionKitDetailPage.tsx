@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider } from '@mui/material';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
+import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
@@ -44,7 +45,10 @@ export const DecisionKitDetailPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>{kit.name}</Typography>
+      <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>{kit.name}</Typography>
+        <DeleteKitButton kitId={kit.id} kitName={kit.name} />
+      </Stack>
       {kit.description && <Typography variant="body1" sx={{ mb: 3 }}>{kit.description}</Typography>}
       <Box sx={{ mb: 4 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">

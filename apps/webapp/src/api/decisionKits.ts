@@ -34,3 +34,39 @@ export function primeDecisionKitCache(kit: DecisionKitDetail) { detailCache.set(
 export function clearDecisionKitCache() { detailCache.clear(); }
 
 export function getDecisionKitsApiBase() { return API_BASE; }
+
+// Create a decision kit
+export interface CreateDecisionKitInput { name: string; description?: string; rubricId: string; candidateIds?: string[] }
+export async function createDecisionKit(input: CreateDecisionKitInput): Promise<DecisionKitListItem> {
+  if (!input.name || !input.name.trim()) throw new Error('Name is required');
+  if (!input.rubricId) throw new Error('Rubric is required');
+  const payload = {
+    name: input.name.trim(),
+    description: input.description?.trim() || undefined,
+    rubricId: input.rubricId,
+    candidateIds: input.candidateIds || []
+  };
+  const res = await api.post<DecisionKitListItem>('/decision-kits/', payload);
+  return res.data;
+}
+
+// Delete a decision kit (cascade handled server-side)
+export async function deleteDecisionKit(id: string): Promise<void> {
+  if (!id) throw new Error('id required');
+  await api.delete(`/decision-kits/${encodeURIComponent(id)}`);
+  // On delete, remove any cached detail
+  detailCache.delete(id);
+}
+
+// Lightweight cache mutation helpers for list consumers (caller maintains list)
+export function addKitToCacheList(local: DecisionKitListItem[] | null, kit: DecisionKitListItem): DecisionKitListItem[] {
+  const arr = local ? [...local] : [];
+  // Avoid duplicates
+  if (!arr.find(k => k.id === kit.id)) arr.unshift(kit);
+  return arr;
+}
+
+export function removeKitFromCacheList(local: DecisionKitListItem[] | null, id: string): DecisionKitListItem[] | null {
+  if (!local) return local;
+  return local.filter(k => k.id !== id);
+}
