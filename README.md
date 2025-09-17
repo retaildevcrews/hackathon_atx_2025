@@ -1,4 +1,4 @@
-# Veda.AI (hackathon_atx_2025)
+# RubricX (hackathon_atx_2025)
 
 Accelerating document-centric workflows through configurable AI-driven analysis. This repo contains artifacts for the Global Hackathon 2025 (Crew ATX @ Redmond) focused on building an extensible evaluation and insight engine for complex business documents.
 
@@ -28,7 +28,7 @@ Accelerating document-centric workflows through configurable AI-driven analysis.
 
 ## Problem Statement
 
-Organizations spend significant time manually reviewing structured and semi-structured documents (procurement specs, internal proposals, vendor responses). Reviews are inconsistent, slow, and dependent on tribal knowledge. Veda.AI automates the first-pass evaluation and surfaces high-value insights early.
+Organizations spend significant time manually reviewing structured and semi-structured documents (procurement specs, internal proposals, vendor responses). Reviews are inconsistent, slow, and dependent on tribal knowledge. RubricX automates the first-pass evaluation and surfaces high-value insights early.
 
 ## Core Value Proposition
 
