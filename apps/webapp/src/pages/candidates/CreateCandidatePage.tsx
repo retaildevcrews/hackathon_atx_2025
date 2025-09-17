@@ -13,7 +13,7 @@ export const CreateCandidatePage: React.FC = () => {
     if (!kitId) return;
     const candidate = await create({ name: values.name, description: values.description, decisionKitId: kitId });
     if (candidate) {
-      navigate(`/candidates/${candidate.id}/edit?kitId=${encodeURIComponent(kitId)}`, { state: { kitId } });
+  navigate(`/decision-kits/${kitId}/candidates/${candidate.id}/edit`, { state: { kitId } });
     }
   }
 
