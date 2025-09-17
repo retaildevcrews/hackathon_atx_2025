@@ -11,7 +11,7 @@ from functools import lru_cache
 from models.invoke import (
     CriterionEvaluation,
     EvaluationResult,
-    DocumentInput,
+    CandidateInput,
     BatchEvaluationResult,
     ComparisonMode,
     RankingStrategy
@@ -99,6 +99,116 @@ class EvaluationService:
             logger.error(f"Error creating LLM: {e}; using stub LLM")
             return None
 
+    async def evaluate(
+        self,
+        rubric_id: str,
+        candidate_ids: List[str],
+        comparison_mode: ComparisonMode = ComparisonMode.DETERMINISTIC,
+        ranking_strategy: RankingStrategy = RankingStrategy.OVERALL_SCORE,
+        max_chunks: int = 10
+    ) -> Dict[str, Any]:
+        """Evaluate candidates by ID using specified rubric.
+
+        This is the new unified evaluation method that:
+        1. Fetches rubric data from criteria_api using rubric_id
+        2. Fetches candidate text from Azure Search using candidate_ids
+        3. Dispatches to single or batch evaluation based on candidate count
+
+        Args:
+            rubric_id: ID of the rubric to use for evaluation
+            candidate_ids: List of candidate IDs to evaluate (1 or more)
+            comparison_mode: Analysis method for multiple candidates
+            ranking_strategy: Strategy for ranking multiple candidates
+            max_chunks: Maximum chunks to retrieve per candidate
+
+        Returns:
+            Dictionary with evaluation results (single or batch format)
+        """
+        try:
+            # Validate inputs
+            if not candidate_ids:
+                return {"error": "No candidate IDs provided"}
+
+            if len(candidate_ids) > 20:
+                return {"error": f"Too many candidates ({len(candidate_ids)}). Maximum is 20 per batch."}
+
+            # Check for duplicate candidate IDs
+            if len(candidate_ids) != len(set(candidate_ids)):
+                return {"error": "Candidate IDs must be unique"}
+
+            # Fetch rubric data
+            logger.info(f"Fetching rubric data for rubric_id: {rubric_id}")
+            rubric_data = await self.criteria_bridge.get_rubric(rubric_id)
+            if not rubric_data:
+                return {"error": f"Rubric '{rubric_id}' not found"}
+
+            # Fetch candidate data
+            logger.info(f"Fetching candidate data for {len(candidate_ids)} candidate(s): {candidate_ids}")
+            candidates_data = await self.search_service.get_candidates_by_ids(candidate_ids)
+
+            # Check for missing candidates
+            missing_candidates = set(candidate_ids) - set(candidates_data.keys())
+            if missing_candidates:
+                return {"error": f"Candidates not found: {list(missing_candidates)}"}
+
+            # Determine evaluation type based on candidate count
+            if len(candidate_ids) == 1:
+                # Single candidate evaluation
+                candidate_id = candidate_ids[0]
+                candidate_data = candidates_data[candidate_id]
+
+                logger.info(f"Performing single candidate evaluation for: {candidate_id}")
+                result = await self.evaluate_document(
+                    document_text=candidate_data["content"],
+                    rubric_name=rubric_id,  # Using rubric_id as rubric_name
+                    document_id=candidate_id,
+                    max_chunks=max_chunks
+                )
+
+                # Add metadata about the ID-based workflow
+                if "agent_metadata" not in result:
+                    result["agent_metadata"] = {}
+                result["agent_metadata"]["workflow"] = "id_based"
+                result["agent_metadata"]["rubric_id"] = rubric_id
+                result["agent_metadata"]["candidate_source"] = "azure_search"
+
+                return result
+
+            else:
+                # Batch candidate evaluation
+                logger.info(f"Performing batch evaluation for {len(candidate_ids)} candidates")
+
+                # Convert to CandidateInput format for existing batch logic
+                candidate_inputs = []
+                for candidate_id in candidate_ids:
+                    candidate_data = candidates_data[candidate_id]
+                    candidate_inputs.append(CandidateInput(
+                        candidate_id=candidate_id,
+                        candidate_text=candidate_data["content"],
+                        metadata=candidate_data.get("metadata", {})
+                    ))
+
+                result = await self.evaluate_document_batch(
+                    documents=candidate_inputs,
+                    rubric_name=rubric_id,  # Using rubric_id as rubric_name
+                    comparison_mode=comparison_mode,
+                    ranking_strategy=ranking_strategy,
+                    max_chunks=max_chunks
+                )
+
+                # Add metadata about the ID-based workflow
+                if "batch_metadata" not in result:
+                    result["batch_metadata"] = {}
+                result["batch_metadata"]["workflow"] = "id_based"
+                result["batch_metadata"]["rubric_id"] = rubric_id
+                result["batch_metadata"]["candidate_source"] = "azure_search"
+
+                return result
+
+        except Exception as e:
+            logger.error(f"Evaluation failed: {e}", exc_info=True)
+            return {"error": f"Evaluation failed: {str(e)}"}
+
     async def evaluate_document(
         self,
         document_text: str,
@@ -175,7 +285,7 @@ class EvaluationService:
 
     async def evaluate_document_batch(
         self,
-        documents: List[DocumentInput],
+        documents: List[CandidateInput],
         rubric_name: str,
         comparison_mode: ComparisonMode = ComparisonMode.DETERMINISTIC,
         ranking_strategy: RankingStrategy = RankingStrategy.OVERALL_SCORE,
@@ -270,7 +380,7 @@ class EvaluationService:
 
     async def _evaluate_documents_parallel(
         self,
-        documents: List[DocumentInput],
+        documents: List[CandidateInput],
         rubric_name: str,
         max_chunks: int
     ) -> List[Dict[str, Any]]:

@@ -1,5 +1,5 @@
 """
-Routes for document evaluation endpoints.
+Routes for candidate evaluation endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,9 +8,7 @@ from typing import Dict, Any
 from models.invoke import (
     EvaluationRequest,
     EvaluationResponse,
-    RubricsListResponse,
-    BatchEvaluationRequest,
-    BatchEvaluationResponse
+    RubricsListResponse
 )
 from services.evaluation_service import EvaluationService, get_evaluation_service
 
@@ -18,116 +16,77 @@ router = APIRouter(prefix="/evaluation", tags=["evaluation"])
 
 
 @router.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate_document(
+async def evaluate_candidates(
     request: EvaluationRequest,
     evaluation_service: EvaluationService = Depends(get_evaluation_service)
 ) -> EvaluationResponse:
-    """Evaluate a document against a specific rubric.
+    """Evaluate candidates against a specific rubric using IDs.
+
+    Automatically handles single candidate or batch evaluation based on
+    the number of candidate_ids provided.
 
     Args:
-        request: Evaluation request with document text and rubric name/ID
+        request: Evaluation request with rubric_id and candidate_id(s)
         evaluation_service: Injected evaluation service
 
     Returns:
-        Evaluation results with scores, reasoning, and recommendations
-    """
-    try:
-        # Support both rubric name and ID lookup
-        rubric_identifier = request.rubric_name
-
-        result = await evaluation_service.evaluate_document(
-            document_text=request.document_text,
-            rubric_name=rubric_identifier,
-            document_id=request.document_id,
-            max_chunks=request.max_chunks
-        )
-
-        if "error" in result:
-            return EvaluationResponse(
-                status="error",
-                error=result["error"]
-            )
-
-        # Convert dict to EvaluationResult model
-        from models.invoke import EvaluationResult
-        evaluation_result = EvaluationResult(**result)
-
-        return EvaluationResponse(
-            status="success",
-            evaluation=evaluation_result
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Evaluation failed: {str(e)}"
-        )
-
-
-@router.post("/evaluate-batch", response_model=BatchEvaluationResponse)
-async def evaluate_document_batch(
-    request: BatchEvaluationRequest,
-    evaluation_service: EvaluationService = Depends(get_evaluation_service)
-) -> BatchEvaluationResponse:
-    """Evaluate multiple documents against a rubric and compare results.
-
-    Args:
-        request: Batch evaluation request with documents, rubric, and comparison settings
-        evaluation_service: Injected evaluation service
-
-    Returns:
-        Batch evaluation results with individual scores and cross-document analysis
+        Evaluation results with scores, reasoning, and recommendations.
+        For single candidate: evaluation field populated
+        For multiple candidates: batch_result field populated
     """
     try:
         # Validate request
-        if not request.documents:
-            return BatchEvaluationResponse(
+        if not request.candidate_ids:
+            return EvaluationResponse(
                 status="error",
-                error="No documents provided for evaluation"
+                is_batch=False,
+                error="No candidate IDs provided"
             )
 
-        if len(request.documents) > 20:
-            return BatchEvaluationResponse(
-                status="error",
-                error=f"Too many documents ({len(request.documents)}). Maximum is 20 per batch."
-            )
-
-        # Validate document IDs are unique
-        document_ids = [doc.document_id for doc in request.documents]
-        if len(document_ids) != len(set(document_ids)):
-            return BatchEvaluationResponse(
-                status="error",
-                error="Document IDs must be unique within a batch"
-            )
-
-        # Perform batch evaluation
-        result = await evaluation_service.evaluate_document_batch(
-            documents=request.documents,
-            rubric_name=request.rubric_name,
+        # Call unified evaluation method
+        result = await evaluation_service.evaluate(
+            rubric_id=request.rubric_id,
+            candidate_ids=request.candidate_ids,
             comparison_mode=request.comparison_mode,
             ranking_strategy=request.ranking_strategy,
             max_chunks=request.max_chunks
         )
 
         if "error" in result:
-            return BatchEvaluationResponse(
+            return EvaluationResponse(
                 status="error",
+                is_batch=len(request.candidate_ids) > 1,
                 error=result["error"]
             )
 
-        # Convert dict to BatchEvaluationResult model
-        from models.invoke import BatchEvaluationResult
-        batch_result = BatchEvaluationResult(**result)
+        # Determine response format based on candidate count
+        is_batch = len(request.candidate_ids) > 1
 
-        return BatchEvaluationResponse(
-            status="success",
-            batch_result=batch_result
-        )
+        if is_batch:
+            # Multiple documents - return batch result
+            from models.invoke import BatchEvaluationResult
+            batch_result = BatchEvaluationResult(**result)
+
+            return EvaluationResponse(
+                status="success",
+                is_batch=True,
+                batch_result=batch_result
+            )
+        else:
+            # Single document - return individual result
+            from models.invoke import EvaluationResult
+            evaluation_result = EvaluationResult(**result)
+
+            return EvaluationResponse(
+                status="success",
+                is_batch=False,
+                evaluation=evaluation_result
+            )
 
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Batch evaluation failed: {str(e)}"
+            detail=f"Evaluation failed: {str(e)}"
         )
 
 

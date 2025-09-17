@@ -131,35 +131,24 @@ async def test_integration():
         print(f"   ❌ Rubric details failed: {e}")
         return
 
-    # Test 4: Evaluate a sample document
-    print(f"\n4️⃣ Testing document evaluation...")
+    # Test 4: Evaluate candidates by ID (new workflow)
+    print(f"\n4️⃣ Testing ID-based candidate evaluation...")
 
-    sample_document = """
-    Samsung 65" Neo QLED 8K TV Review
-
-    Picture Quality: Exceptional 8K resolution with Quantum Dot technology delivers
-    stunning color accuracy and brightness. HDR10+ and Dolby Vision support provide
-    excellent contrast ratios. Peak brightness reaches 4000 nits.
-
-    Sound Quality: Object Tracking Sound+ with Dolby Atmos creates immersive audio
-    experience. 60W speakers with dedicated subwoofer deliver rich bass and clear dialogue.
-
-    Smart Platform: Tizen OS runs smoothly with comprehensive app selection including
-    Netflix, Disney+, Prime Video, and gaming apps. Interface is responsive and intuitive.
-
-    Build Quality: Premium materials with slim profile design. Excellent build quality
-    with minimal bezels and sturdy stand.
-    """
+    # Example candidate IDs that should exist in Azure Search
+    # In a real scenario, these would be actual candidate IDs from your index
+    sample_candidate_ids = ["doc_001", "samsung_tv_review"]
 
     evaluation_request = {
-        "document_text": sample_document,
-        "rubric_name": test_rubric_id,
-        "document_id": "samsung_qled_test"
+        "rubric_id": test_rubric_id,
+        "candidate_ids": sample_candidate_ids[:1],  # Single candidate test
+        "comparison_mode": "deterministic",
+        "ranking_strategy": "overall_score",
+        "max_chunks": 10
     }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            print(f"   📤 Sending evaluation request...")
+            print(f"   📤 Sending ID-based evaluation request for 1 candidate...")
             response = await client.post(
                 "http://localhost:8001/evaluation/evaluate",
                 json=evaluation_request
@@ -175,25 +164,33 @@ async def test_integration():
                 return
 
             if eval_result.get("status") == "success":
-                evaluation = eval_result.get("evaluation", {})
-                overall_score = evaluation.get("overall_score", 0)
-                criteria_evaluations = evaluation.get("criteria_evaluations", [])
-                summary = evaluation.get("summary", "No summary")
+                is_batch = eval_result.get("is_batch", False)
+                print(f"   ✅ Evaluation completed! (Batch mode: {is_batch})")
 
-                print(f"   ✅ Evaluation completed!")
-                print(f"      Overall Score: {overall_score:.2f}/5.0")
-                print(f"      Criteria Evaluated: {len(criteria_evaluations)}")
-                print(f"      Summary: {summary[:100]}...")
+                if is_batch:
+                    batch_result = eval_result.get("batch_result", {})
+                    total_candidates = batch_result.get("total_candidates", 0)
+                    print(f"      Total Candidates: {total_candidates}")
 
-                # Show individual criterion scores
-                if criteria_evaluations:
-                    print(f"      Individual Scores:")
-                    for criterion in criteria_evaluations[:5]:  # Show first 5
-                        name = criterion.get('criterion_name', 'Unknown')
-                        score = criterion.get('score', 0)
-                        print(f"        - {name}: {score:.1f}/5.0")
-                    if len(criteria_evaluations) > 5:
-                        print(f"        ... and {len(criteria_evaluations) - 5} more")
+                    comparison_summary = batch_result.get("comparison_summary", {})
+                    best_candidate = comparison_summary.get("best_candidate", {})
+                    if best_candidate:
+                        print(f"      Best Candidate: {best_candidate.get('candidate_id')} (Score: {best_candidate.get('overall_score'):.2f})")
+                else:
+                    evaluation = eval_result.get("evaluation", {})
+                    overall_score = evaluation.get("overall_score", 0)
+                    candidate_id = evaluation.get("candidate_id", "Unknown")
+                    criteria_evaluations = evaluation.get("criteria_evaluations", [])
+
+                    print(f"      Candidate ID: {candidate_id}")
+                    print(f"      Overall Score: {overall_score:.2f}/5.0")
+                    print(f"      Criteria Evaluated: {len(criteria_evaluations)}")
+
+                    # Show workflow metadata
+                    agent_metadata = evaluation.get("agent_metadata", {})
+                    workflow = agent_metadata.get("workflow", "unknown")
+                    candidate_source = agent_metadata.get("candidate_source", "unknown")
+                    print(f"      Workflow: {workflow}, Candidate Source: {candidate_source}")
 
             else:
                 error_msg = eval_result.get('error', eval_result.get('message', 'Unknown error'))
@@ -205,14 +202,91 @@ async def test_integration():
         print(f"   ❌ Evaluation request timed out (>60s)")
         return
     except Exception as e:
-        print(f"   ❌ Document evaluation failed: {e}")
+        print(f"   ❌ ID-based evaluation failed: {e}")
         return
 
-    print(f"\n🎉 All tests passed! Integration is working correctly.")
+    # Test 5: Batch evaluation using IDs
+    print(f"\n5️⃣ Testing batch evaluation with multiple candidate IDs...")
+
+    batch_evaluation_request = {
+        "rubric_id": test_rubric_id,
+        "candidate_ids": sample_candidate_ids,  # Multiple candidates
+        "comparison_mode": "deterministic",
+        "ranking_strategy": "overall_score",
+        "max_chunks": 10
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            print(f"   📤 Sending batch evaluation request for {len(sample_candidate_ids)} candidates...")
+            response = await client.post(
+                "http://localhost:8001/evaluation/evaluate",
+                json=batch_evaluation_request
+            )
+
+            print(f"   📊 Batch Evaluation Response Status: {response.status_code}")
+
+            try:
+                batch_result = response.json()
+            except Exception as json_error:
+                print(f"   ❌ Failed to parse batch JSON: {json_error}")
+                print(f"   📊 Raw Response: {response.text}")
+                return
+
+            if batch_result.get("status") == "success":
+                is_batch = batch_result.get("is_batch", False)
+                print(f"   ✅ Batch evaluation completed! (Batch mode: {is_batch})")
+
+                if is_batch:
+                    batch_data = batch_result.get("batch_result", {})
+                    total_candidates = batch_data.get("total_candidates", 0)
+                    print(f"      Total Candidates Evaluated: {total_candidates}")
+
+                    comparison_summary = batch_data.get("comparison_summary", {})
+                    best_candidate = comparison_summary.get("best_candidate", {})
+                    rankings = comparison_summary.get("rankings", [])
+
+                    if best_candidate:
+                        print(f"      🏆 Best Candidate: {best_candidate.get('candidate_id')} (Score: {best_candidate.get('overall_score'):.2f})")
+
+                    print(f"      📊 Candidate Rankings:")
+                    for ranking in rankings[:3]:  # Show top 3
+                        candidate_id = ranking.get('candidate_id', 'Unknown')
+                        rank = ranking.get('rank', 0)
+                        score = ranking.get('overall_score', 0)
+                        print(f"        {rank}. {candidate_id}: {score:.2f}/5.0")
+
+                    # Show workflow metadata
+                    batch_metadata = batch_data.get("batch_metadata", {})
+                    workflow = batch_metadata.get("workflow", "unknown")
+                    candidate_source = batch_metadata.get("candidate_source", "unknown")
+                    print(f"      Workflow: {workflow}, Candidate Source: {candidate_source}")
+
+            else:
+                error_msg = batch_result.get('error', batch_result.get('message', 'Unknown error'))
+                print(f"   ❌ Batch evaluation failed: {error_msg}")
+                print(f"   📊 Full response: {json.dumps(batch_result, indent=2)}")
+                return
+
+    except httpx.TimeoutException:
+        print(f"   ❌ Batch evaluation request timed out (>90s)")
+        return
+    except Exception as e:
+        print(f"   ❌ Batch evaluation failed: {e}")
+        return
+
+    print(f"\n🎉 All tests passed! ID-based evaluation workflow is working correctly.")
+    print(f"\n📝 New Workflow Summary:")
+    print(f"   - Input: rubric_id + candidate_id(s)")
+    print(f"   - Agent fetches rubric from criteria_api")
+    print(f"   - Agent fetches candidate text from Azure Search")
+    print(f"   - Single candidate: returns evaluation result")
+    print(f"   - Multiple candidates: returns batch evaluation with comparison")
     print(f"\n📝 Next steps:")
+    print(f"   - Ensure your candidates are indexed in Azure Search")
+    print(f"   - Use candidate IDs that exist in your search index")
     print(f"   - Create custom rubrics via criteria_api endpoints")
-    print(f"   - Evaluate your own documents using the agent service")
-    print(f"   - Integrate with your document management system")
+    print(f"   - Integrate with your candidate management system using IDs")
 
 
 if __name__ == "__main__":
