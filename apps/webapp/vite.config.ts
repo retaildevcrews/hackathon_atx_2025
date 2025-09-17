@@ -23,5 +23,16 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          mui: ['@mui/material', '@mui/icons-material'],
+          vendor: ['axios']
+        }
+      }
+    }
   }
 });

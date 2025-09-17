@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
-import { DecisionKitListPage } from './decision-kits/DecisionKitListPage';
-import { DecisionKitDetailPage } from './decision-kits/DecisionKitDetailPage';
-import { AddDecisionKitPage } from './decision-kits/AddDecisionKitPage';
-import { RubricsListPage, RubricDetailPage, AddEditRubricPage } from './rubrics';
 import { LegacyRubricApp } from './LegacyRubricApp';
+
+// Lazy loaded route components
+const DecisionKitListPage = lazy(() => import('./decision-kits/DecisionKitListPage').then(m => ({ default: m.DecisionKitListPage })));
+const DecisionKitDetailPage = lazy(() => import('./decision-kits/DecisionKitDetailPage').then(m => ({ default: m.DecisionKitDetailPage })));
+const AddDecisionKitPage = lazy(() => import('./decision-kits/AddDecisionKitPage').then(m => ({ default: m.AddDecisionKitPage })));
+const RubricsListPage = lazy(() => import('./rubrics/RubricsListPage').then(m => ({ default: m.RubricsListPage })));
+const RubricDetailPage = lazy(() => import('./rubrics/RubricDetailPage').then(m => ({ default: m.RubricDetailPage })));
+const AddEditRubricPage = lazy(() => import('./rubrics/AddEditRubricPage').then(m => ({ default: m.AddEditRubricPage })));
+const CreateCandidatePage = lazy(() => import('./candidates/CreateCandidatePage').then(m => ({ default: m.CreateCandidatePage })));
+const EditCandidateMaterialsPage = lazy(() => import('./candidates/EditCandidateMaterialsPage').then(m => ({ default: m.EditCandidateMaterialsPage })));
 
 export const App: React.FC = () => {
   const enableDecisionKits =
@@ -20,24 +26,28 @@ export const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<DecisionKitListPage />} />
+      <Suspense fallback={<div style={{ padding: '1rem' }}>Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<DecisionKitListPage />} />
 
-          {/* Decision Kit Routes */}
-          <Route path="decision-kits/new" element={<AddDecisionKitPage />} />
-          <Route path="decision-kits/:kitId" element={<DecisionKitDetailPage />} />
+            {/* Decision Kit Routes */}
+            <Route path="decision-kits/new" element={<AddDecisionKitPage />} />
+            <Route path="decision-kits/:kitId" element={<DecisionKitDetailPage />} />
+            <Route path="decision-kits/:kitId/candidates/new" element={<CreateCandidatePage />} />
+            <Route path="candidates/:candidateId/edit" element={<EditCandidateMaterialsPage />} />
 
-          {/* Rubric Routes */}
-          <Route path="rubrics" element={<RubricsListPage />} />
-          <Route path="rubrics/new" element={<AddEditRubricPage />} />
-          <Route path="rubrics/:id" element={<RubricDetailPage />} />
-          <Route path="rubrics/:id/edit" element={<AddEditRubricPage />} />
+            {/* Rubric Routes */}
+            <Route path="rubrics" element={<RubricsListPage />} />
+            <Route path="rubrics/new" element={<AddEditRubricPage />} />
+            <Route path="rubrics/:id" element={<RubricDetailPage />} />
+            <Route path="rubrics/:id/edit" element={<AddEditRubricPage />} />
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 };
