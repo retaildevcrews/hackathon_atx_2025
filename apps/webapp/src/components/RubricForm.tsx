@@ -11,9 +11,10 @@ interface RubricFormProps {
   initialRubric?: Rubric;
   onSave: (rubric: Omit<Rubric, 'id'>) => void;
   loading?: boolean;
+  onCancel?: () => void;
 }
 
-export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, loading }) => {
+export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, loading, onCancel }) => {
   const [name, setName] = useState(initialRubric?.name || '');
   const [description, setDescription] = useState(initialRubric?.description || '');
   const { criteria, refresh, create, update } = useCriteria();
@@ -362,6 +363,22 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
             fullWidth
           >
             {loading ? 'Saving...' : 'Save Rubric'}
+          </Button>
+          <Button
+            type="button"
+            variant="outlined"
+            color="inherit"
+            disabled={loading}
+            fullWidth
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              } else if (window.history.length > 1) {
+                window.history.back();
+              }
+            }}
+          >
+            Cancel
           </Button>
         </Stack>
       </Paper>
