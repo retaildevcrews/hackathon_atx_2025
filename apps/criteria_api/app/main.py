@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import criteria, rubrics, decision_kits
+from app.routes import criteria, rubrics, decision_kits, candidates
 from app.utils.db import Base, engine
 from app.models import criteria_orm  # ensure import side effects
 from app.models import rubric_orm  # ensure rubric table
@@ -54,6 +54,7 @@ seed()
 app.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
 app.include_router(rubrics.router, prefix="/rubrics", tags=["rubrics"])
 app.include_router(decision_kits.router, prefix="/decision-kits", tags=["decision_kits"])
+app.include_router(candidates.router, prefix="/candidates", tags=["candidates"]) 
 
 @app.get("/")
 def root():
