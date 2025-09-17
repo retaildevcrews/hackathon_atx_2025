@@ -3,6 +3,9 @@ from datetime import datetime, timezone
 from typing import Optional
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
+import os
+import logging
+import mimetypes
 
 from app.utils.db import SessionLocal
 from app.models.candidate_orm import CandidateMaterialORM
@@ -12,6 +15,41 @@ from app.models.candidate import CandidateMaterial, CandidateMaterialList
 # For now we do not integrate Azure Blob; we keep a pseudo path so contract stays similar.
 def _pseudo_blob_path(candidate_id: str, material_id: str, filename: str) -> str:
     return f"candidates/{candidate_id}/{material_id}_{filename}"
+
+def _pseudo_save_blob(blob_path: str, data: bytes) -> None:
+    """Upload file bytes to Azure Blob Storage if configured.
+
+    Environment variables:
+      - AZURE_STORAGE_CONNECTION_STRING: Azure Storage connection string (preferred)
+      - STORAGE_CONN_STRING: legacy alternate name
+      - CANDIDATE_MATERIALS_CONTAINER: target container name (defaults to 'raw-docs')
+
+    If the connection string is not configured, this function will log a warning and
+    return without raising to preserve existing behavior for local development.
+    """
+    conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
+    container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "raw-docs")
+    if not conn_str:
+        logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob upload for %s", blob_path)
+        return
+
+    try:
+        from azure.storage.blob import BlobServiceClient, ContentSettings
+    except Exception as exc:
+        logging.exception("azure-storage-blob package not available; cannot upload candidate material.", exc_info=exc)
+        raise
+
+    try:
+        service = BlobServiceClient.from_connection_string(conn_str)
+        blob_client = service.get_blob_client(container=container, blob=blob_path)
+        content_type, _ = mimetypes.guess_type(blob_path)
+        content_settings = ContentSettings(content_type=content_type or "application/octet-stream")
+        # Upload the data (overwrite any existing blob at this path)
+        blob_client.upload_blob(data, overwrite=True, content_settings=content_settings)
+        logging.debug("Uploaded blob to container=%s path=%s", container, blob_path)
+    except Exception as exc:
+        logging.exception("Failed to upload blob to Azure Storage for %s", blob_path, exc_info=exc)
+        raise
 
 
 def _serialize(orm: CandidateMaterialORM) -> CandidateMaterial:
@@ -52,6 +90,7 @@ def create_material(candidate_id: str, file: UploadFile) -> CandidateMaterial:
     material_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     blob_path = _pseudo_blob_path(candidate_id, material_id, file.filename)
+    _pseudo_save_blob(blob_path, data)
     db = SessionLocal()
     orm = CandidateMaterialORM(
         id=material_id,

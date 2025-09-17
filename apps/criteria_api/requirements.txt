@@ -4,3 +4,4 @@ sqlalchemy
 python-dotenv
 pydantic
 pydantic-settings
+azure-storage-blob
