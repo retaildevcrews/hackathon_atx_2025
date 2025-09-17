@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Breadcrumbs, Link, CircularProgress, Alert, Snackbar } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
-import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { createRubric, updateRubric, fetchRubricDetail } from '../../api/rubrics';
 import { Rubric } from '../../types/rubric';
 import { RubricForm } from '../../components/RubricForm';
@@ -9,6 +9,8 @@ import { RubricForm } from '../../components/RubricForm';
 export const AddEditRubricPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from as string | undefined;
   const isEditMode = Boolean(id);
 
   // Data state
@@ -52,11 +54,11 @@ export const AddEditRubricPage: React.FC = () => {
       if (isEditMode && id) {
         await updateRubric(id, rubricData);
         setSnackbar({ open: true, message: 'Rubric updated successfully', severity: 'success' });
-        setTimeout(() => navigate(`/rubrics/${id}`), 1000);
+        setTimeout(() => navigate(fromPath || `/rubrics/${id}`), 1000);
       } else {
         const newRubric = await createRubric(rubricData);
         setSnackbar({ open: true, message: 'Rubric created successfully', severity: 'success' });
-        setTimeout(() => navigate(`/rubrics/${newRubric.id}`), 1000);
+        setTimeout(() => navigate(fromPath || `/rubrics/${newRubric.id}`), 1000);
       }
     } catch (err: any) {
       setSnackbar({ open: true, message: err.message || 'Failed to save rubric', severity: 'error' });
@@ -70,7 +72,7 @@ export const AddEditRubricPage: React.FC = () => {
   };
 
   const pageTitle = isEditMode ? 'Edit Rubric' : 'Create Rubric';
-  const backPath = isEditMode ? `/rubrics/${id}` : '/rubrics';
+  const backPath = fromPath || (isEditMode ? `/rubrics/${id}` : '/rubrics');
 
   if (loading) {
     return (
@@ -127,7 +129,12 @@ export const AddEditRubricPage: React.FC = () => {
       </Box>
 
       {/* Form */}
-      <RubricForm initialRubric={originalRubric ?? undefined} onSave={handleSave} loading={saving || loading} />
+      <RubricForm
+        initialRubric={originalRubric ?? undefined}
+        onSave={handleSave}
+        loading={saving || loading}
+        onCancel={() => navigate(backPath)}
+      />
 
       {/* Success/Error Snackbar */}
       <Snackbar

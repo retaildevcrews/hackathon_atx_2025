@@ -5,6 +5,7 @@ import { useRubricSummary } from '../../hooks/useRubricSummary';
 import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
+import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -53,6 +54,8 @@ export const DecisionKitDetailPage: React.FC = () => {
     definition: c.definition
   }));
 
+  const currentRubricId = (effectiveRubric && (effectiveRubric as any).id) || rubricId;
+
   return (
     <Box>
       <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -63,9 +66,21 @@ export const DecisionKitDetailPage: React.FC = () => {
       <Box sx={{ mb: 4 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>Rubric</Typography>
-          <IconButton aria-label={rubricOpen ? 'collapse rubric' : 'expand rubric'} size="small" onClick={() => setRubricOpen(o => !o)}>
-            {rubricOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {currentRubricId && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/rubrics/${currentRubricId}/edit`, { state: { from: `/decision-kits/${kit.id}` } })}
+              >
+                Edit Rubric
+              </Button>
+            )}
+            <IconButton aria-label={rubricOpen ? 'collapse rubric' : 'expand rubric'} size="small" onClick={() => setRubricOpen(o => !o)}>
+              {rubricOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Stack>
         </Box>
         <Divider sx={{ mb: 1 }} />
         {rubricError && <Alert severity="error" action={<Button onClick={retryRubric}>Retry</Button>}>{rubricError}</Alert>}
@@ -77,6 +92,15 @@ export const DecisionKitDetailPage: React.FC = () => {
         ) : (
           <Box>
             <Typography variant="body2" sx={{ mb: 1 }}>No rubric data available. Attach one to get started.</Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => navigate('/rubrics/new', { state: { from: `/decision-kits/${kit.id}` } })}
+              >
+                Create Rubric
+              </Button>
+            </Stack>
             {kit && (
               <AttachRubricForm
                 onAttach={async (rid: string) => {
