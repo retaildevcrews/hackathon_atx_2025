@@ -8,13 +8,14 @@ import statistics
 from typing import Dict, List, Tuple, Any
 
 from models.invoke import (
+    CriterionEvaluation,
     EvaluationResult,
-    DocumentRanking,
+    CandidateInput,
     ComparisonSummary,
+    CandidateRanking,
     StatisticalSummary,
     CriteriaAnalysis,
-    RankingStrategy,
-    ComparisonMode
+    RankingStrategy
 )
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class DeterministicComparison:
 
         return analyses
 
-    def _rank_documents(self, results: List[EvaluationResult], strategy: RankingStrategy) -> List[DocumentRanking]:
+    def _rank_documents(self, results: List[EvaluationResult], strategy: RankingStrategy) -> List[CandidateRanking]:
         """Rank documents based on the specified strategy."""
         if strategy == RankingStrategy.OVERALL_SCORE:
             return self._rank_by_overall_score(results)
@@ -153,7 +154,7 @@ class DeterministicComparison:
             # Default to overall score
             return self._rank_by_overall_score(results)
 
-    def _rank_by_overall_score(self, results: List[EvaluationResult]) -> List[DocumentRanking]:
+    def _rank_by_overall_score(self, results: List[EvaluationResult]) -> List[CandidateRanking]:
         """Rank documents by weighted overall score."""
         sorted_results = sorted(results, key=lambda x: x.overall_score, reverse=True)
 
@@ -180,7 +181,7 @@ class DeterministicComparison:
 
         return rankings
 
-    def _rank_by_consistency(self, results: List[EvaluationResult]) -> List[DocumentRanking]:
+    def _rank_by_consistency(self, results: List[EvaluationResult]) -> List[CandidateRanking]:
         """Rank documents by consistency (lowest standard deviation in criterion scores)."""
         consistency_scores = []
 
@@ -220,7 +221,7 @@ class DeterministicComparison:
 
         return rankings
 
-    def _rank_by_peak_performance(self, results: List[EvaluationResult]) -> List[DocumentRanking]:
+    def _rank_by_peak_performance(self, results: List[EvaluationResult]) -> List[CandidateRanking]:
         """Rank documents by peak performance (highest individual criterion scores)."""
         peak_scores = []
 
@@ -262,7 +263,7 @@ class DeterministicComparison:
 
         return rankings
 
-    def _rank_by_balanced_performance(self, results: List[EvaluationResult]) -> List[DocumentRanking]:
+    def _rank_by_balanced_performance(self, results: List[EvaluationResult]) -> List[CandidateRanking]:
         """Rank documents by balanced performance across all criteria."""
         balance_scores = []
 
@@ -366,7 +367,7 @@ class DeterministicComparison:
 
     def _generate_recommendation_rationale(
         self,
-        winner: DocumentRanking,
+        winner: CandidateRanking,
         criteria_analysis: List[CriteriaAnalysis]
     ) -> str:
         """Generate explanation for why the top document was recommended."""
