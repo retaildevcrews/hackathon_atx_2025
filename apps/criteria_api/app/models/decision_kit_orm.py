@@ -33,11 +33,15 @@ class DecisionKitCandidateORM(Base):
     decision_kit_id = Column(String, ForeignKey("decision_kits.id", ondelete="CASCADE"), nullable=False, index=True)
     candidate_id = Column(String, ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=False)
     position = Column(Integer, nullable=False)
+    # Duplicate the normalized candidate name for per-kit uniqueness enforcement.
+    # This avoids global uniqueness while preventing duplicate names within the same kit.
+    name_normalized = Column(String, nullable=False, index=True)
 
     decision_kit = relationship("DecisionKitORM", back_populates="candidates_assoc")
     candidate = relationship("CandidateORM", lazy="joined")
 
     __table_args__ = (
-    UniqueConstraint("decision_kit_id", "candidate_id", name="uq_decision_kit_candidate"),
+        UniqueConstraint("decision_kit_id", "candidate_id", name="uq_decision_kit_candidate"),
+        UniqueConstraint("decision_kit_id", "name_normalized", name="uq_decision_kit_candidate_name"),
         Index("ix_decision_kit_position", "decision_kit_id", "position"),
     )

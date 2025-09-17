@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { resolveApiBase } from '../config/api';
 import { RubricSummary } from '../types/decisionKits';
-import { Rubric, Criteria } from '../types/rubric';
+import { Rubric } from '../types/rubric';
 import { CriteriaRecord } from './criteria';
 
 const API_BASE = resolveApiBase();

@@ -12,6 +12,7 @@ const RubricDetailPage = lazy(() => import('./rubrics/RubricDetailPage').then(m 
 const AddEditRubricPage = lazy(() => import('./rubrics/AddEditRubricPage').then(m => ({ default: m.AddEditRubricPage })));
 const CreateCandidatePage = lazy(() => import('./candidates/CreateCandidatePage').then(m => ({ default: m.CreateCandidatePage })));
 const EditCandidateMaterialsPage = lazy(() => import('./candidates/EditCandidateMaterialsPage').then(m => ({ default: m.EditCandidateMaterialsPage })));
+const EditCandidatePage = lazy(() => import('./candidates/EditCandidatePage').then(m => ({ default: m.EditCandidatePage })));
 
 export const App: React.FC = () => {
   const enableDecisionKits =
@@ -35,6 +36,8 @@ export const App: React.FC = () => {
             <Route path="decision-kits/new" element={<AddDecisionKitPage />} />
             <Route path="decision-kits/:kitId" element={<DecisionKitDetailPage />} />
             <Route path="decision-kits/:kitId/candidates/new" element={<CreateCandidatePage />} />
+            <Route path="decision-kits/:kitId/candidates/:candidateId/edit" element={<EditCandidatePage />} />
+            {/* Existing materials edit route left intact temporarily if used elsewhere */}
             <Route path="candidates/:candidateId/edit" element={<EditCandidateMaterialsPage />} />
 
             {/* Rubric Routes */}

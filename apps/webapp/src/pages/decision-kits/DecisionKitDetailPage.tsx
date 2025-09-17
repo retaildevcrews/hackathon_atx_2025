@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
 import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
@@ -136,9 +137,17 @@ export const DecisionKitDetailPage: React.FC = () => {
               .map((cd: any) => (
                 <Grid item xs={12} sm={6} md={4} key={cd.id}>
                   <Card variant="outlined">
-                    <CardContent>
+                    <CardContent sx={{ position: 'relative', pb: 4 }}>
                       <Typography variant="subtitle1" noWrap>{cd.name}</Typography>
                       {cd.description && <Typography variant="body2" className="twoLineClamp">{cd.description}</Typography>}
+                      <IconButton
+                        aria-label="edit candidate"
+                        size="small"
+                        sx={{ position: 'absolute', top: 4, right: 4 }}
+                        onClick={() => navigate(`/decision-kits/${kit.id}/candidates/${cd.id}/edit`)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
                     </CardContent>
                   </Card>
                 </Grid>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.utils.db import Base
@@ -23,9 +23,7 @@ class CandidateORM(Base):
 
     materials = relationship("CandidateMaterialORM", back_populates="candidate", cascade="all, delete-orphan")
 
-    __table_args__ = (
-        UniqueConstraint('name_normalized', name='uq_candidate_name_normalized'),
-    )
+    # Global uniqueness removed; uniqueness now enforced per decision kit in association table.
 
 
 class CandidateMaterialORM(Base):
