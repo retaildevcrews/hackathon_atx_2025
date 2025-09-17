@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Rubric } from '../types/rubric';
 import type { Criteria as CriteriaModel } from '../hooks/useCriteria';
 import { useCriteria } from '../hooks/useCriteria';
+import axios from 'axios';
 import { Box, Typography, TextField, Button, FormControl, FormHelperText, Paper, Stack, FormLabel, IconButton, Divider, Chip } from '@mui/material';
 import { Add, Delete, Edit } from '@mui/icons-material';
 
@@ -17,7 +18,13 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
   const [description, setDescription] = useState(initialRubric?.description || '');
   const { criteria, refresh, create, update } = useCriteria();
   const [entries, setEntries] = useState<Array<{ id?: string; name: string; description?: string; definition?: string; weight?: number }>>(
-    initialRubric?.criteria?.map(c => ({ id: c.id, name: c.name, description: (c as any).description || '', definition: (c as any).definition || '', weight: (c as any).weight })) || []
+    initialRubric?.criteria?.map((c: any) => ({
+      id: c.criteriaId || c.id, // backend returns criteriaId; older UI may use id
+      name: c.name,
+      description: c.description || '',
+      definition: c.definition || '',
+      weight: typeof c.weight === 'number' ? c.weight : undefined,
+    })) || []
   );
   const [newName, setNewName] = useState('');
   const [newWeight, setNewWeight] = useState<number | ''>('');
@@ -28,10 +35,27 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
   const [touchedName, setTouchedName] = useState(false);
   const [touchedDescription, setTouchedDescription] = useState(false);
   const [touchedCriteria, setTouchedCriteria] = useState(false);
+  const [weightMin, setWeightMin] = useState<number>(0.05);
+  const [weightMax, setWeightMax] = useState<number>(1.0);
+  const [weightStep, setWeightStep] = useState<number>(0.05);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Fetch runtime settings from API
+  useEffect(() => {
+    const apiBase = (window as any).__CRITERIA_API_URL__ || import.meta.env.VITE_CRITERIA_API_URL || 'http://localhost:8000';
+    axios.get(`${apiBase}/settings`).then(res => {
+      const s = res.data || {};
+      if (typeof s.rubricWeightMin === 'number') setWeightMin(s.rubricWeightMin);
+      if (typeof s.rubricWeightMax === 'number') setWeightMax(s.rubricWeightMax);
+      if (typeof s.rubricWeightStep === 'number') setWeightStep(s.rubricWeightStep);
+  // defaultRubricWeight not currently used in UI; backend applies default when omitted
+    }).catch(() => {
+      // keep defaults on failure
+    });
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +64,15 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
     const hasDescription = description.trim().length > 0;
     const hasCriteria = entries.length > 0;
     if (!hasName || !hasDescription || !hasCriteria) return;
-    const normalized = entries.map(e => ({ id: e.id ?? '', name: e.name, description: e.description || '', definition: e.definition || '' }));
-    onSave({ name, description, criteria: normalized });
+    const normalized = entries.map(e => ({
+      // API expects criteriaId and optional weight
+      criteriaId: e.id && e.id !== '' ? String(e.id) : undefined,
+      name: e.name,
+      description: e.description || '',
+      definition: e.definition || '',
+      weight: typeof e.weight === 'number' ? e.weight : undefined,
+    }));
+    onSave({ name, description, criteria: normalized as any });
   }
 
   async function handleAddEntry() {
@@ -54,7 +85,18 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
       const existing = criteria.find(
         (c: CriteriaModel) => c.name.trim().toLowerCase() === nameToAdd.toLowerCase()
       );
-      const weightVal = newWeight === '' ? undefined : Number(newWeight);
+      // Validate weight against runtime bounds
+  const weightVal = newWeight === '' ? undefined : Number(newWeight);
+      if (typeof weightVal === 'number') {
+        const inRange = weightVal >= weightMin && weightVal <= weightMax;
+        const n = Math.round(weightVal / weightStep);
+        const onStep = Math.abs(weightVal - (n * weightStep)) <= 1e-9;
+        if (!inRange || !onStep) {
+          setAddLoading(false);
+          setErrorText(`Weight must be between ${weightMin} and ${weightMax} in ${weightStep} increments.`);
+          return;
+        }
+      }
       if (existing && existing.id) {
         setEntries((prev) => [...prev, { id: String(existing.id), name: existing.name, weight: weightVal }]);
       } else {
@@ -177,7 +219,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                           value={e.weight ?? ''}
                           onChange={ev => updateEntry(idx, { weight: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                           sx={{ width: 160 }}
-                          inputProps={{ min: 0, step: 0.1 }}
+                          inputProps={{ min: weightMin, max: weightMax, step: weightStep }}
                         />
                         {e.id && (
                           <IconButton aria-label="edit criterion" onClick={() => startEditEntry(e.id)}>
@@ -236,7 +278,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                   value={newWeight}
                   onChange={e => setNewWeight(e.target.value === '' ? '' : Number(e.target.value))}
                   sx={{ width: 160 }}
-                  inputProps={{ min: 0, step: 0.1 }}
+                  inputProps={{ min: weightMin, max: weightMax, step: weightStep }}
                 />
                 <Button startIcon={<Add />} variant="outlined" onClick={handleAddEntry} disabled={addLoading}>
                   Add

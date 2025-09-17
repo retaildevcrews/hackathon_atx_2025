@@ -25,7 +25,7 @@ export async function fetchRubricsList(): Promise<Rubric[]> {
 /**
  * Create a new rubric
  */
-export async function createRubric(rubric: Partial<Rubric>): Promise<Rubric> {
+export async function createRubric(rubric: any): Promise<Rubric> {
   if (!rubric.name?.trim()) throw new Error('Rubric name is required');
 
   const res = await api.post<Rubric>('/rubrics/', {
@@ -42,7 +42,7 @@ export async function createRubric(rubric: Partial<Rubric>): Promise<Rubric> {
 /**
  * Update an existing rubric
  */
-export async function updateRubric(id: string, updates: Partial<Rubric>): Promise<Rubric> {
+export async function updateRubric(id: string, updates: any): Promise<Rubric> {
   if (!id) throw new Error('Rubric ID is required');
 
   const res = await api.put<Rubric>(`/rubrics/${encodeURIComponent(id)}`, {

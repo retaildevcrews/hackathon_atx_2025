@@ -10,6 +10,7 @@ from app.models import decision_kit_orm  # ensure decision kit tables
 from app.models import candidate_orm  # ensure candidate table
 from sqlalchemy import text
 from app.seed.seed_data import seed
+from app.config import settings
 
 app = FastAPI()
 
@@ -63,3 +64,14 @@ def root():
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+@app.get("/settings")
+def get_settings():
+    # Expose only safe, non-sensitive runtime configuration for clients
+    return {
+        "rubricWeightMin": settings.RUBRIC_WEIGHT_MIN,
+        "rubricWeightMax": settings.RUBRIC_WEIGHT_MAX,
+        "rubricWeightStep": settings.RUBRIC_WEIGHT_STEP,
+        "defaultRubricWeight": settings.DEFAULT_RUBRIC_WEIGHT,
+        "allowZeroWeight": settings.ALLOW_ZERO_WEIGHT,
+    }
