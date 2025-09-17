@@ -124,8 +124,9 @@ class EvaluationResponse(BaseModel):
     """Response model for evaluation endpoint - handles both single and batch results."""
     status: str = Field(description="Success or error status")
     is_batch: bool = Field(description="True if multiple candidates were evaluated")
-    evaluation: Optional[EvaluationResult] = Field(None, description="Single candidate evaluation result")
-    batch_result: Optional[BatchEvaluationResult] = Field(None, description="Batch evaluation result for multiple candidates")
+    evaluation_id: Optional[str] = Field(None, description="ID of saved evaluation result")
+    evaluation: Optional[EvaluationResult] = Field(None, description="Single candidate evaluation result (fallback)")
+    batch_result: Optional[BatchEvaluationResult] = Field(None, description="Batch evaluation result for multiple candidates (fallback)")
     error: Optional[str] = None
 
 

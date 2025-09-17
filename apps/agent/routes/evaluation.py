@@ -59,6 +59,16 @@ async def evaluate_candidates(
                 error=result["error"]
             )
 
+        # Check if we got an evaluation_id (new flow) or full results (fallback)
+        if "evaluation_id" in result and result.get("status") == "success":
+            # New flow: return just the evaluation ID
+            return EvaluationResponse(
+                status="success",
+                is_batch=len(request.candidate_ids) > 1,
+                evaluation_id=result["evaluation_id"]
+            )
+
+        # Fallback to old flow with full results
         # Determine response format based on candidate count
         is_batch = len(request.candidate_ids) > 1
 

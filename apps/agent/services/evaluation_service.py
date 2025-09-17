@@ -5,6 +5,7 @@ Uses criteria_api service for rubric and criteria data.
 
 import asyncio
 import logging
+import httpx
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
@@ -99,6 +100,88 @@ class EvaluationService:
             logger.error(f"Error creating LLM: {e}; using stub LLM")
             return None
 
+    async def save_evaluation_to_criteria_api(
+        self,
+        evaluation_result: Dict[str, Any],
+        rubric_id: str,
+        candidate_ids: List[str],
+        is_batch: bool = False
+    ) -> Optional[str]:
+        """Save evaluation result to criteria_api and return evaluation ID.
+        
+        Args:
+            evaluation_result: The evaluation result dictionary
+            rubric_id: ID of the rubric used
+            candidate_ids: List of candidate IDs evaluated
+            is_batch: Whether this was a batch evaluation
+            
+        Returns:
+            Evaluation ID if successful, None if failed
+        """
+        try:
+            # Prepare the evaluation data for criteria_api
+            if is_batch:
+                # Batch evaluation result
+                batch_result = evaluation_result
+                rubric_name = batch_result.get("rubric_name", "Unknown")
+                total_candidates = batch_result.get("total_candidates", len(candidate_ids))
+                
+                # Extract overall score from best candidate or calculate average
+                overall_score = 3.0  # Default fallback
+                if "comparison_summary" in batch_result and "best_candidate" in batch_result["comparison_summary"]:
+                    overall_score = batch_result["comparison_summary"]["best_candidate"].get("overall_score", 3.0)
+                elif "individual_results" in batch_result and batch_result["individual_results"]:
+                    scores = [result.get("overall_score", 3.0) for result in batch_result["individual_results"]]
+                    overall_score = sum(scores) / len(scores) if scores else 3.0
+                
+                evaluation_data = {
+                    "rubric_id": rubric_id,
+                    "overall_score": overall_score,
+                    "rubric_name": rubric_name,
+                    "total_candidates": total_candidates,
+                    "is_batch": True,
+                    "individual_results": batch_result.get("individual_results", []),
+                    "comparison_summary": batch_result.get("comparison_summary"),
+                    "evaluation_metadata": batch_result.get("batch_metadata", {}),
+                    "candidate_ids": candidate_ids
+                }
+            else:
+                # Single evaluation result
+                single_result = evaluation_result
+                evaluation_data = {
+                    "rubric_id": rubric_id,
+                    "overall_score": single_result.get("overall_score", 3.0),
+                    "rubric_name": single_result.get("rubric_name", "Unknown"),
+                    "total_candidates": 1,
+                    "is_batch": False,
+                    "individual_results": [single_result],
+                    "comparison_summary": None,
+                    "evaluation_metadata": single_result.get("agent_metadata", {}),
+                    "candidate_ids": candidate_ids
+                }
+            
+            # Send to criteria_api
+            criteria_api_url = self.settings.criteria_api_url or "http://localhost:8000"
+            url = f"{criteria_api_url}/candidates/evaluations"
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(url, json=evaluation_data)
+                response.raise_for_status()
+                
+                created_evaluation = response.json()
+                evaluation_id = created_evaluation.get("id")
+                
+                if evaluation_id:
+                    logger.info(f"Successfully saved evaluation result with ID: {evaluation_id}")
+                    return evaluation_id
+                else:
+                    logger.error("No evaluation ID returned from criteria_api")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Failed to save evaluation to criteria_api: {e}", exc_info=True)
+            return None
+
     async def evaluate(
         self,
         rubric_id: str,
@@ -172,7 +255,19 @@ class EvaluationService:
                 result["agent_metadata"]["rubric_id"] = rubric_id
                 result["agent_metadata"]["candidate_source"] = "azure_search"
 
-                return result
+                # Save to criteria_api and return evaluation ID
+                evaluation_id = await self.save_evaluation_to_criteria_api(
+                    evaluation_result=result,
+                    rubric_id=rubric_id,
+                    candidate_ids=candidate_ids,
+                    is_batch=False
+                )
+                
+                if evaluation_id:
+                    return {"evaluation_id": evaluation_id, "status": "success"}
+                else:
+                    logger.warning("Failed to save evaluation to criteria_api, returning full result")
+                    return result
 
             else:
                 # Batch candidate evaluation
@@ -203,7 +298,19 @@ class EvaluationService:
                 result["batch_metadata"]["rubric_id"] = rubric_id
                 result["batch_metadata"]["candidate_source"] = "azure_search"
 
-                return result
+                # Save to criteria_api and return evaluation ID
+                evaluation_id = await self.save_evaluation_to_criteria_api(
+                    evaluation_result=result,
+                    rubric_id=rubric_id,
+                    candidate_ids=candidate_ids,
+                    is_batch=True
+                )
+                
+                if evaluation_id:
+                    return {"evaluation_id": evaluation_id, "status": "success"}
+                else:
+                    logger.warning("Failed to save evaluation to criteria_api, returning full result")
+                    return result
 
         except Exception as e:
             logger.error(f"Evaluation failed: {e}", exc_info=True)
