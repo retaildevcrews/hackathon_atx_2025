@@ -52,9 +52,9 @@ export const getAppTheme = (mode: ThemeMode) =>
             },
           },
           containedPrimary: {
-            backgroundColor: '#228B22',
+            backgroundColor: '#295D27',
             '&:hover': {
-              backgroundColor: '#1e7a1e',
+              backgroundColor: '#228B22',
             },
           },
           containedSecondary: {
