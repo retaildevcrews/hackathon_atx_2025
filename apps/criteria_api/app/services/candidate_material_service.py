@@ -1,4 +1,5 @@
 import uuid
+from azure.storage.blob import BlobServiceClient, ContentSettings
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import UploadFile
@@ -16,7 +17,12 @@ from app.models.candidate import CandidateMaterial, CandidateMaterialList
 def _pseudo_blob_path(candidate_id: str, material_id: str, filename: str) -> str:
     return f"candidates/{candidate_id}/{material_id}_{filename}"
 
-def _pseudo_save_blob(blob_path: str, data: bytes) -> None:
+def _pseudo_save_blob(
+    blob_path: str,
+    data: bytes,
+    candidate_id: str,
+    material_id: str,
+) -> None:
     """Upload file bytes to Azure Blob Storage if configured.
 
     Environment variables:
@@ -34,21 +40,40 @@ def _pseudo_save_blob(blob_path: str, data: bytes) -> None:
         return
 
     try:
-        from azure.storage.blob import BlobServiceClient, ContentSettings
-    except Exception as exc:
-        logging.exception("azure-storage-blob package not available; cannot upload candidate material.", exc_info=exc)
-        raise
-
-    try:
         service = BlobServiceClient.from_connection_string(conn_str)
         blob_client = service.get_blob_client(container=container, blob=blob_path)
         content_type, _ = mimetypes.guess_type(blob_path)
         content_settings = ContentSettings(content_type=content_type or "application/octet-stream")
+        # include candidate and material ids as blob metadata
+        metadata = {"candidate_id": candidate_id, "material_id": material_id}
         # Upload the data (overwrite any existing blob at this path)
-        blob_client.upload_blob(data, overwrite=True, content_settings=content_settings)
+        blob_client.upload_blob(data, overwrite=True, content_settings=content_settings, metadata=metadata)
         logging.debug("Uploaded blob to container=%s path=%s", container, blob_path)
     except Exception as exc:
         logging.exception("Failed to upload blob to Azure Storage for %s", blob_path, exc_info=exc)
+        raise
+
+
+
+def _pseudo_delete_blob(blob_path: str, candidate_id: str, material_id: str) -> None:
+    """Delete a blob from Azure Blob Storage if configured.
+
+    Mirrors behavior of _pseudo_save_blob: if no connection string is set,
+    log a warning and return without raising to preserve local development flow.
+    """
+    conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
+    container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "raw-docs")
+    if not conn_str:
+        logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob delete for %s", blob_path)
+        return
+
+    try:
+        service = BlobServiceClient.from_connection_string(conn_str)
+        blob_client = service.get_blob_client(container=container, blob=blob_path)
+        blob_client.delete_blob()
+        logging.debug("Deleted blob from container=%s path=%s", container, blob_path)
+    except Exception as exc:
+        logging.exception("Failed to delete blob from Azure Storage for %s", blob_path, exc_info=exc)
         raise
 
 
@@ -140,4 +165,8 @@ def delete_material(candidate_id: str, material_id: str) -> bool:
     db.delete(orm)
     db.commit()
     db.close()
+
+    # attempt to delete the corresponding blob in storage
+    _blob_path = _pseudo_blob_path(candidate_id, material_id, orm.filename)
+    _pseudo_delete_blob(_blob_path, candidate_id, material_id)
     return True
