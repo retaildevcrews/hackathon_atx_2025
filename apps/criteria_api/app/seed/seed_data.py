@@ -137,7 +137,13 @@ def seed():
             # Still ensure at least one decision kit and a few candidates exist.
             if db.query(CandidateORM).count() == 0:
                 for name in ["Alpha", "Beta", "Gamma"]:
-                    db.add(CandidateORM(id=str(uuid.uuid4()), name=f"Candidate {name}"))
+                    display = f"Candidate {name}"
+                    db.add(CandidateORM(
+                        id=str(uuid.uuid4()),
+                        name=display,
+                        name_normalized=display.lower().strip(),
+                        description=f"Seeded candidate {name}",
+                    ))
                 db.commit()
             if db.query(DecisionKitORM).first() is None:
                 rubric_row = db.query(RubricORM).first()
@@ -158,7 +164,6 @@ def seed():
                         id=str(uuid.uuid4()),
                         decision_kit_id=kit.id,
                         candidate_id=c.id,
-                        candidate_name=c.name,
                         position=pos,
                     ))
                 db.commit()
@@ -218,7 +223,13 @@ def seed():
         for name in ["Alpha", "Beta", "Gamma"]:
             cid = str(uuid.uuid4())
             candidate_ids.append(cid)
-            db.add(CandidateORM(id=cid, name=f"Candidate {name}"))
+            display = f"Candidate {name}"
+            db.add(CandidateORM(
+                id=cid,
+                name=display,
+                name_normalized=display.lower().strip(),
+                description=f"Seeded candidate {name}",
+            ))
         db.commit()
 
         # Seed Decision Kit referencing all candidates
@@ -239,7 +250,6 @@ def seed():
                 id=str(uuid.uuid4()),
                 decision_kit_id=kit.id,
                 candidate_id=cid,
-                candidate_name=cand.name if cand else "",
                 position=pos,
             ))
         db.commit()
