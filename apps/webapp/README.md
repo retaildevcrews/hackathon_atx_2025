@@ -1,3 +1,36 @@
+# Webapp Theming
+
+The app uses Material UI with a centralized theme in `src/theme.ts`.
+
+- Primary color: forest green (`#228B22`)
+- Secondary color: olive green (`#808000`)
+- Light and dark modes are supported via a theme toggle in the AppBar.
+
+## Where to edit colors
+
+- Update palette and component overrides in `src/theme.ts`. The theme is produced by `getAppTheme(mode)`.
+- Common places to adjust:
+   - `palette.primary` / `palette.secondary`
+   - `components.MuiAppBar.styleOverrides`
+   - `components.MuiButton.styleOverrides`
+
+## Light/Dark toggle
+
+A toggle button in the header switches between light and dark modes at runtime. The initial mode is based on the user's `prefers-color-scheme`.
+
+If you want to remove the toggle and hardcode light mode, set `mode: 'light'` in `src/main.tsx` and remove the toggle button from `src/pages/layout/AppLayout.tsx`.
+
+```ts
+// src/theme.ts
+export const getAppTheme = (mode: 'light' | 'dark') => createTheme({
+   palette: { mode, primary: { main: '#228B22' }, secondary: { main: '#808000' } }
+});
+```
+
+```tsx
+// src/main.tsx (excerpt)
+const [mode, setMode] = useState<ThemeMode>('light');
+```
 # Webapp: Criteria & Rubric Manager
 
 This React app allows users to manage document analysis criteria and build rubrics composed of multiple criteria. It integrates with backend APIs for full CRUD operations.
@@ -128,7 +161,26 @@ Edge Cases:
 - Locked kits (409) display an error and remain intact.
 
 ## Testing
-- Add unit and integration tests in `src/__tests__/` (recommended)
+Add unit and integration tests in `src/__tests__/` (recommended).
+
+Notes about production builds and tests:
+
+- Production builds exclude test files via `tsconfig.json` (`exclude` includes `src/__tests__`, `*.test.ts(x)`, and `src/setupTests.ts`).
+- This prevents test-only imports (e.g., `@testing-library/react`) from affecting the production TypeScript build.
+- To run tests locally, use:
+   ```sh
+   yarn test
+   ```
+   Ensure dev dependencies are installed and that `jest` is configured (see `jest.config.cjs`).
+
+### Toggle legacy Rubric UI for tests/dev
+
+The app defaults to the new Decision Kits UI. Some tests target the legacy Rubric UI. To force the legacy UI during runtime/tests, set the global flag `window.__ENABLE_DECISION_KITS_UI__ = 'false'` before rendering the app.
+
+- In tests: see `src/__tests__/RubricIntegration.test.tsx` where the flag is set in `beforeAll`.
+- In a manual debugging session, you can set this in the browser devtools console before the app mounts, then refresh.
+
+When the flag is not set (or set to any value other than `'false'`), the Decision Kits UI is rendered.
 
 ## Contributing
 - Please see the planning docs in `copilot_planning/webapp/` for feature and implementation plans.

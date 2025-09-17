@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -7,12 +7,14 @@ import {
   Box,
   IconButton
 } from '@mui/material';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, DarkMode, LightMode } from '@mui/icons-material';
 import { Outlet } from 'react-router-dom';
 import { NavigationDrawer, DRAWER_WIDTH } from '../../components/navigation/NavigationDrawer';
+import { ColorModeContext } from '../../main';
 
 export const AppLayout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { mode, toggleTheme } = useContext(ColorModeContext);
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -45,6 +47,10 @@ export const AppLayout: React.FC = () => {
           <Typography variant="h6" noWrap component="div">
             Decision Kits Platform
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <IconButton color="inherit" aria-label="toggle theme" onClick={toggleTheme}>
+            {mode === 'dark' ? <LightMode /> : <DarkMode />}
+          </IconButton>
         </Toolbar>
       </AppBar>
 

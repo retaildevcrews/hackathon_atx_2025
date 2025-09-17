@@ -4,11 +4,16 @@ from datetime import datetime
 
 
 class RubricCriteriaEntryBase(BaseModel):
-    criteriaId: str = Field(..., description="Referenced criteria UUID")
+    # criteriaId may be omitted for newly created criteria; backend will initialize
+    criteriaId: str | None = Field(None, description="Referenced criteria UUID (optional for new criteria)")
     weight: Optional[float] = Field(
         None,
         description="Criterion weight; optional on create/update (default applied if omitted)."
     )
+    # Optional fields to seed new criteria when criteriaId is not provided
+    name: str | None = Field(None, description="Name for new criteria (when criteriaId is missing)")
+    description: str | None = Field(None, description="Description for new criteria (when criteriaId is missing)")
+    definition: str | None = Field(None, description="Definition for new criteria (when criteriaId is missing)")
 
 
 class RubricCriteriaEntryCreate(RubricCriteriaEntryBase):

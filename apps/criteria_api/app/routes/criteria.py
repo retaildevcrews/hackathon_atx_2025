@@ -27,6 +27,14 @@ def update_criteria(criteria_id: str, data: CriteriaUpdate):
         raise HTTPException(status_code=404, detail="Criteria not found")
     return updated
 
+# Support update semantics without an ID in the path by treating it as a blank ID update
+# This enables clients that send PUT requests with no criteria_id to initialize a new record.
+@router.put("/", response_model=Criteria)
+def update_criteria_without_id(data: CriteriaUpdate):
+    updated = criteria_service.update_criteria("", data)
+    # update_criteria will create a new record when criteria_id is blank-like
+    return updated
+
 @router.delete("/{criteria_id}", response_model=dict)
 def delete_criteria(criteria_id: str):
     deleted = criteria_service.delete_criteria(criteria_id)

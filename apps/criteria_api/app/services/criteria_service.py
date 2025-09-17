@@ -36,6 +36,21 @@ def create_criteria(data: CriteriaCreate) -> Criteria:
 
 def update_criteria(criteria_id: str, data: CriteriaUpdate) -> Optional[Criteria]:
     db: Session = SessionLocal()
+    # If criteria_id is missing or blank-like, initialize a new one and create the record
+    if not criteria_id or str(criteria_id).strip() in ("", "null", "undefined"):
+        new_id = str(uuid.uuid4())
+        # CriteriaUpdate has optional fields; default to empty strings to satisfy NOT NULL columns
+        item = CriteriaORM(
+            id=new_id,
+            name=(data.name or ""),
+            description=(data.description or ""),
+            definition=(data.definition or ""),
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        db.close()
+        return Criteria(**item.__dict__)
     item = db.query(CriteriaORM).filter(CriteriaORM.id == criteria_id).first()
     if not item:
         db.close()

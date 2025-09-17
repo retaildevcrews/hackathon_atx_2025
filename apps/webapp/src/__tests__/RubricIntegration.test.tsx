@@ -44,15 +44,18 @@ describe('Rubric Integration (legacy UI)', () => {
     render(<App />);
     expect(screen.getByText(/Rubric 1/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Rubric 1/i));
-    expect(screen.getByText(/Desc 1/i)).toBeInTheDocument();
+    // There may be multiple occurrences; ensure at least one is rendered
+    expect(screen.getAllByText(/Desc 1/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Criterion 1/i)).toBeInTheDocument();
   });
 
   it('shows rubric form and validates', async () => {
     render(<App />);
     fireEvent.click(screen.getByText(/Add Rubric/i));
-    fireEvent.click(screen.getByText(/Save Rubric/i));
-    expect(screen.getByText(/Name is required/i)).toBeInTheDocument();
+    // Trigger field-level validation by blurring empty required fields
+    const nameInput = screen.getByLabelText(/Name/i);
+    fireEvent.blur(nameInput);
+    expect(await screen.findByText('Name is required.')).toBeInTheDocument();
   });
 
   it('allows editing a rubric', async () => {
