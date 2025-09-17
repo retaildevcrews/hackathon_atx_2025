@@ -34,6 +34,7 @@ def _serialize(orm: DecisionKitORM) -> DecisionKit:
         rubricVersion=orm.rubric_version,
         rubricPublished=orm.rubric_published,
         status=orm.status,
+        evaluation_id=orm.evaluation_id,
         candidates=candidates,
         createdAt=orm.created_at,
         updatedAt=orm.updated_at,
@@ -118,6 +119,46 @@ def list_decision_kits(name_filter: Optional[str] = None) -> List[DecisionKit]:
     finally:
         if close:
             db.close()
+
+
+def update_evaluation_id(kit_id: str, evaluation_id: str) -> Optional[DecisionKit]:
+    """Update a decision kit with an evaluation result ID.
+
+    Args:
+        kit_id: Decision kit ID to update
+        evaluation_id: Evaluation result ID to associate
+
+    Returns:
+        Updated decision kit or None if not found
+    """
+    db = SessionLocal()
+    try:
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
+
+        if not kit:
+            return None
+
+        # Update evaluation_id and timestamp
+        kit.evaluation_id = evaluation_id
+        kit.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(kit)
+
+        # Re-fetch with relationships for serialization
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
+
+        return _serialize(kit)
+
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()
 
 
 def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optional[DecisionKit]:

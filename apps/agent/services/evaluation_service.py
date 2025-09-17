@@ -108,13 +108,13 @@ class EvaluationService:
         is_batch: bool = False
     ) -> Optional[str]:
         """Save evaluation result to criteria_api and return evaluation ID.
-        
+
         Args:
             evaluation_result: The evaluation result dictionary
             rubric_id: ID of the rubric used
             candidate_ids: List of candidate IDs evaluated
             is_batch: Whether this was a batch evaluation
-            
+
         Returns:
             Evaluation ID if successful, None if failed
         """
@@ -125,7 +125,7 @@ class EvaluationService:
                 batch_result = evaluation_result
                 rubric_name = batch_result.get("rubric_name", "Unknown")
                 total_candidates = batch_result.get("total_candidates", len(candidate_ids))
-                
+
                 # Extract overall score from best candidate or calculate average
                 overall_score = 3.0  # Default fallback
                 if "comparison_summary" in batch_result and "best_candidate" in batch_result["comparison_summary"]:
@@ -133,7 +133,7 @@ class EvaluationService:
                 elif "individual_results" in batch_result and batch_result["individual_results"]:
                     scores = [result.get("overall_score", 3.0) for result in batch_result["individual_results"]]
                     overall_score = sum(scores) / len(scores) if scores else 3.0
-                
+
                 evaluation_data = {
                     "rubric_id": rubric_id,
                     "overall_score": overall_score,
@@ -159,25 +159,25 @@ class EvaluationService:
                     "evaluation_metadata": single_result.get("agent_metadata", {}),
                     "candidate_ids": candidate_ids
                 }
-            
+
             # Send to criteria_api
             criteria_api_url = self.settings.criteria_api_url or "http://localhost:8000"
             url = f"{criteria_api_url}/candidates/evaluations"
-            
+
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(url, json=evaluation_data)
                 response.raise_for_status()
-                
+
                 created_evaluation = response.json()
                 evaluation_id = created_evaluation.get("id")
-                
+
                 if evaluation_id:
                     logger.info(f"Successfully saved evaluation result with ID: {evaluation_id}")
                     return evaluation_id
                 else:
                     logger.error("No evaluation ID returned from criteria_api")
                     return None
-                    
+
         except Exception as e:
             logger.error(f"Failed to save evaluation to criteria_api: {e}", exc_info=True)
             return None
@@ -262,7 +262,7 @@ class EvaluationService:
                     candidate_ids=candidate_ids,
                     is_batch=False
                 )
-                
+
                 if evaluation_id:
                     return {"evaluation_id": evaluation_id, "status": "success"}
                 else:
@@ -305,7 +305,7 @@ class EvaluationService:
                     candidate_ids=candidate_ids,
                     is_batch=True
                 )
-                
+
                 if evaluation_id:
                     return {"evaluation_id": evaluation_id, "status": "success"}
                 else:
