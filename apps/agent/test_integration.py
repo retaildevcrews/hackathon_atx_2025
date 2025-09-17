@@ -19,12 +19,22 @@ async def test_integration():
     try:
         async with httpx.AsyncClient() as client:
             # Check criteria_api
-            criteria_health = await client.get("http://localhost:8001/healthz")
-            print(f"   ✅ Criteria API: {criteria_health.status_code}")
+            try:
+                criteria_health = await client.get("http://localhost:8000/healthz")
+                print(f"   ✅ Criteria API: {criteria_health.status_code}")
+            except Exception as e:
+                print(f"   ❌ Criteria API not reachable: {e}")
+                print("   💡 Make sure criteria_api is running on port 8000")
+                return
 
             # Check agent service
-            agent_health = await client.get("http://localhost:8000/healthz")
-            print(f"   ✅ Agent Service: {agent_health.status_code}")
+            try:
+                agent_health = await client.get("http://localhost:8001/")
+                print(f"   ✅ Agent Service: {agent_health.status_code}")
+            except Exception as e:
+                print(f"   ❌ Agent Service not reachable: {e}")
+                print("   💡 Make sure agent service is running on port 8001")
+                return
 
     except Exception as e:
         print(f"   ❌ Service health check failed: {e}")
@@ -35,28 +45,55 @@ async def test_integration():
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8000/evaluation/rubrics")
-            rubrics_data = response.json()
+            response = await client.get("http://localhost:8001/evaluation/rubrics")
+
+            print(f"   📊 Response Status: {response.status_code}")
+            print(f"   📊 Response Headers: {dict(response.headers)}")
+
+            try:
+                rubrics_data = response.json()
+                print(f"   📊 Response Body: {json.dumps(rubrics_data, indent=2)}")
+            except Exception as json_error:
+                print(f"   ❌ Failed to parse JSON response: {json_error}")
+                print(f"   📊 Raw Response Text: {response.text}")
+                return
+
+            # Check if response has expected structure
+            if not isinstance(rubrics_data, dict):
+                print(f"   ❌ Expected dict response, got {type(rubrics_data)}")
+                return
+
+            if "status" not in rubrics_data:
+                print(f"   ❌ Response missing 'status' field")
+                print(f"   📊 Available fields: {list(rubrics_data.keys())}")
+                return
 
             if rubrics_data["status"] == "success":
-                rubrics = rubrics_data["rubrics"]
+                rubrics = rubrics_data.get("rubrics", [])
                 print(f"   ✅ Found {len(rubrics)} rubrics:")
                 for rubric in rubrics:
-                    print(f"      - {rubric['rubric_name']} (ID: {rubric['rubric_id']})")
+                    print(f"      - {rubric.get('rubric_name', 'N/A')} (ID: {rubric.get('rubric_id', 'N/A')})")
 
                 # Use first rubric for evaluation test
                 if rubrics:
-                    test_rubric_id = rubrics[0]["rubric_id"]
-                    test_rubric_name = rubrics[0]["rubric_name"]
+                    test_rubric_id = rubrics[0].get("rubric_id")
+                    test_rubric_name = rubrics[0].get("rubric_name")
+                    if not test_rubric_id:
+                        print("   ⚠️ First rubric missing rubric_id field")
+                        return
                 else:
-                    print("   ⚠️ No rubrics found")
+                    print("   ⚠️ No rubrics found - check if criteria_api has sample data")
                     return
             else:
-                print(f"   ❌ Failed to list rubrics: {rubrics_data}")
+                print(f"   ❌ API returned error status: {rubrics_data}")
                 return
 
+    except httpx.RequestError as e:
+        print(f"   ❌ HTTP request failed: {e}")
+        return
     except Exception as e:
         print(f"   ❌ Rubric listing failed: {e}")
+        print(f"   📊 Exception type: {type(e).__name__}")
         return
 
     # Test 3: Get rubric details
@@ -64,14 +101,28 @@ async def test_integration():
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"http://localhost:8000/evaluation/rubrics/{test_rubric_id}")
-            rubric_details = response.json()
+            response = await client.get(f"http://localhost:8001/evaluation/rubrics/{test_rubric_id}")
 
-            if rubric_details["status"] == "success":
-                criteria_count = len(rubric_details["rubric"]["criteria"])
+            print(f"   📊 Response Status: {response.status_code}")
+
+            try:
+                rubric_details = response.json()
+            except Exception as json_error:
+                print(f"   ❌ Failed to parse JSON: {json_error}")
+                print(f"   📊 Raw Response: {response.text}")
+                return
+
+            if rubric_details.get("status") == "success":
+                rubric = rubric_details.get("rubric", {})
+                criteria = rubric.get("criteria", [])
+                criteria_count = len(criteria)
                 print(f"   ✅ Rubric has {criteria_count} criteria")
-                for criterion in rubric_details["rubric"]["criteria"]:
-                    print(f"      - {criterion['description'][:50]}... (weight: {criterion['weight']})")
+                for criterion in criteria[:3]:  # Show first 3
+                    desc = criterion.get('description', 'No description')
+                    weight = criterion.get('weight', 'No weight')
+                    print(f"      - {desc[:50]}... (weight: {weight})")
+                if len(criteria) > 3:
+                    print(f"      ... and {len(criteria) - 3} more criteria")
             else:
                 print(f"   ❌ Failed to get rubric details: {rubric_details}")
                 return
@@ -103,38 +154,56 @@ async def test_integration():
     evaluation_request = {
         "document_text": sample_document,
         "rubric_name": test_rubric_id,
-        "document_id": "samsung_qled_test",
-        "max_chunks": 5
+        "document_id": "samsung_qled_test"
     }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
+            print(f"   📤 Sending evaluation request...")
             response = await client.post(
-                "http://localhost:8000/evaluation/evaluate",
+                "http://localhost:8001/evaluation/evaluate",
                 json=evaluation_request
             )
 
-            eval_result = response.json()
+            print(f"   📊 Evaluation Response Status: {response.status_code}")
 
-            if eval_result["status"] == "success":
-                evaluation = eval_result["evaluation"]
-                overall_score = evaluation["overall_score"]
-                criteria_count = len(evaluation["criteria_evaluations"])
+            try:
+                eval_result = response.json()
+            except Exception as json_error:
+                print(f"   ❌ Failed to parse evaluation JSON: {json_error}")
+                print(f"   📊 Raw Response: {response.text}")
+                return
+
+            if eval_result.get("status") == "success":
+                evaluation = eval_result.get("evaluation", {})
+                overall_score = evaluation.get("overall_score", 0)
+                criteria_evaluations = evaluation.get("criteria_evaluations", [])
+                summary = evaluation.get("summary", "No summary")
 
                 print(f"   ✅ Evaluation completed!")
                 print(f"      Overall Score: {overall_score:.2f}/5.0")
-                print(f"      Criteria Evaluated: {criteria_count}")
-                print(f"      Summary: {evaluation['summary'][:100]}...")
+                print(f"      Criteria Evaluated: {len(criteria_evaluations)}")
+                print(f"      Summary: {summary[:100]}...")
 
                 # Show individual criterion scores
-                print(f"      Individual Scores:")
-                for criterion in evaluation["criteria_evaluations"]:
-                    print(f"        - {criterion['criterion_name']}: {criterion['score']:.1f}/5.0")
+                if criteria_evaluations:
+                    print(f"      Individual Scores:")
+                    for criterion in criteria_evaluations[:5]:  # Show first 5
+                        name = criterion.get('criterion_name', 'Unknown')
+                        score = criterion.get('score', 0)
+                        print(f"        - {name}: {score:.1f}/5.0")
+                    if len(criteria_evaluations) > 5:
+                        print(f"        ... and {len(criteria_evaluations) - 5} more")
 
             else:
-                print(f"   ❌ Evaluation failed: {eval_result.get('error', 'Unknown error')}")
+                error_msg = eval_result.get('error', eval_result.get('message', 'Unknown error'))
+                print(f"   ❌ Evaluation failed: {error_msg}")
+                print(f"   📊 Full response: {json.dumps(eval_result, indent=2)}")
                 return
 
+    except httpx.TimeoutException:
+        print(f"   ❌ Evaluation request timed out (>60s)")
+        return
     except Exception as e:
         print(f"   ❌ Document evaluation failed: {e}")
         return

@@ -130,7 +130,7 @@ class EvaluationService:
                 improvements=summary_data["improvements"],
                 agent_metadata={
                     "evaluation_model": "langchain-azure-openai",
-                    "chunks_analyzed": len(document_chunks),
+                    "chunks_analyzed": str(len(document_chunks)),  # Convert to string
                     "workflow": "batch_evaluation"
                 }
             )
