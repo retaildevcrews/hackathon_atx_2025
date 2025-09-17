@@ -64,12 +64,13 @@ Positions are reassigned on each update (PUT) based on the order supplied. Draft
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/candidates` | List candidates (newest first) |
-| POST | `/candidates` | Create candidate `{ name, description }` (unique name) |
+| POST | `/candidates` | Create candidate `{ name, description, decisionKitId? }` (unique name; optional immediate association) |
 | GET | `/candidates/{candidateId}` | Get candidate |
 | POST | `/candidates/{candidateId}/materials` | Upload material (multipart form field `file`) |
 | GET | `/candidates/{candidateId}/materials` | List material metadata |
 | GET | `/candidates/{candidateId}/materials/{materialId}` | Get single material metadata |
 | DELETE | `/candidates/{candidateId}/materials/{materialId}` | Delete material (metadata + underlying blob placeholder) |
+| DELETE | `/candidates/{candidateId}` | Delete candidate (hard delete; cascades materials & kit associations) |
 
 ### Material Validation
 
@@ -102,9 +103,31 @@ curl -X POST http://localhost:8000/candidates/<CID>/materials \
 
 Duplicate candidate name returns HTTP 400 with JSON `{ "error": "DUPLICATE_CANDIDATE" }` (mapped internally from a uniqueness violation).
 
+### Candidate Creation With Decision Kit Association
+
+Including `decisionKitId` in the POST body will append the new candidate to the specified decision kit at the next available position (only if the kit status is `OPEN`). Example:
+
+```bash
+curl -s -X POST http://localhost:8000/candidates \
+   -H "Content-Type: application/json" \
+   -d '{
+      "name": "Vendor A",
+      "description": "Primary vendor",
+      "decisionKitId": "<DECISION_KIT_ID>"
+   }'
+```
+
+Failures:
+| Condition | Response |
+|-----------|----------|
+| Unknown decisionKitId | 400 `{ "detail": "Invalid decision kit id" }` |
+| Decision kit not OPEN | 400 `{ "detail": "Decision kit not open for modification" }` |
+
 ### Decision Kits & Candidate Names
 
 Decision kit responses embed associated candidates via an association table; each embedded object includes `candidateId` and a dynamically populated `candidateName` (no duplicate denormalized column persisted). This avoids sync drift and ensures future name edits reflect immediately.
+
+Deleting a candidate removes its materials and any decision kit associations; decision kits remain but their candidate list shrinks and positions are not auto-compacted (a future enhancement may re-normalize positions on delete if required by UI).
 
 
 ## Testing
