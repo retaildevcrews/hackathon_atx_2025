@@ -8,7 +8,9 @@ from typing import Dict, Any
 from models.invoke import (
     EvaluationRequest,
     EvaluationResponse,
-    RubricsListResponse
+    RubricsListResponse,
+    ComparisonMode,
+    RankingStrategy
 )
 from services.evaluation_service import EvaluationService, get_evaluation_service
 
@@ -165,6 +167,46 @@ async def get_rubric_details(
             status_code=500,
             detail=f"Failed to retrieve rubric: {str(e)}"
         )
+
+
+@router.post("/simple")
+async def simple_evaluate(
+    rubric_id: str,
+    candidate_ids: list[str],
+    evaluation_service: EvaluationService = Depends(get_evaluation_service)
+) -> Dict[str, str]:
+    """Simple evaluation endpoint - just returns evaluation ID.
+    
+    Args:
+        rubric_id: ID of the rubric to use for evaluation
+        candidate_ids: List of candidate IDs to evaluate
+        evaluation_service: Injected evaluation service
+        
+    Returns:
+        Dictionary with evaluation_id on success or error on failure
+    """
+    try:
+        # Use default settings for simple evaluation
+        result = await evaluation_service.evaluate(
+            rubric_id=rubric_id,
+            candidate_ids=candidate_ids,
+            comparison_mode=ComparisonMode.DETERMINISTIC,
+            ranking_strategy=RankingStrategy.OVERALL_SCORE,
+            max_chunks=5
+        )
+        
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+        if "evaluation_id" not in result:
+            raise HTTPException(status_code=500, detail="Evaluation completed but no ID returned")
+            
+        return {"evaluation_id": result["evaluation_id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
 
 
 @router.get("/health")
