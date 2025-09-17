@@ -54,3 +54,42 @@ def test_create_and_crud_criteria(monkeypatch):
     # Not found after delete
     resp = client.get(f"/criteria/{cid}")
     assert resp.status_code == 404
+
+
+def test_update_with_blank_id_creates_new(monkeypatch):
+    # Ensure the service container stub exists for backward compatibility
+    from app.services import criteria_service
+
+    class DummyContainer:
+        def __init__(self):
+            self.items = {}
+        def read_all_items(self):
+            return self.items.values()
+        def create_item(self, body):
+            self.items[body["id"]] = body
+        def read_item(self, item, partition_key):
+            return self.items[item]
+        def replace_item(self, item, body):
+            self.items[item] = body
+        def delete_item(self, item, partition_key):
+            del self.items[item]
+
+    dummy = DummyContainer()
+    monkeypatch.setattr(criteria_service, "get_container", lambda: dummy)
+
+    # Baseline count
+    baseline = client.get("/criteria/").json()
+    base_len = len(baseline)
+
+    # PUT with a blank-like id "undefined" should create a new criteria
+    payload = {"name": "New via PUT", "description": "desc", "definition": "def"}
+    resp = client.put("/criteria/undefined", json=payload)
+    assert resp.status_code == 200
+    created = resp.json()
+    assert created.get("id")
+    assert created["name"] == payload["name"]
+
+    # Count should increase by 1
+    resp = client.get("/criteria/")
+    assert resp.status_code == 200
+    assert len(resp.json()) == base_len + 1
