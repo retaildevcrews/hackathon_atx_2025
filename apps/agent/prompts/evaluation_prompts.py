@@ -102,6 +102,10 @@ def get_batch_evaluation_template() -> ChatPromptTemplate:
     """Get the batch evaluation prompt template."""
     return ChatPromptTemplate.from_template(BATCH_EVALUATION_PROMPT)
 
+def get_individual_evaluation_template() -> ChatPromptTemplate:
+    """Get the individual evaluation prompt template."""
+    return ChatPromptTemplate.from_template(SINGLE_EVALUATION_PROMPT)
+
 
 def get_summary_template() -> ChatPromptTemplate:
     """Get the summary prompt template."""
