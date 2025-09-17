@@ -92,5 +92,23 @@ def create_candidate(data: CandidateCreate) -> Candidate:
     finally:
         db.close()
 
+def delete_candidate(candidate_id: str) -> bool:
+    """Hard delete a candidate.
 
-# Removed deprecated list_candidates_for_decision_kit alias; use list_candidates directly.
+    Cascades:
+      - CandidateMaterialORM rows (via configured relationship cascade)
+    Decision kit associations use RESTRICT on candidate FK; delete them explicitly first.
+    Returns True if a row was deleted, False if not found.
+    """
+    db = SessionLocal()
+    try:
+        orm = db.query(CandidateORM).filter(CandidateORM.id == candidate_id).first()
+        if not orm:
+            return False
+        # Remove decision kit associations referencing this candidate
+        db.query(DecisionKitCandidateORM).filter(DecisionKitCandidateORM.candidate_id == candidate_id).delete(synchronize_session=False)
+        db.delete(orm)
+        db.commit()
+        return True
+    finally:
+        db.close()

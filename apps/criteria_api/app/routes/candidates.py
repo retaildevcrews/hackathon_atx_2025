@@ -78,3 +78,15 @@ def delete_material(candidate_id: str, material_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Material not found")
     return {"success": True}
+
+
+@router.delete("/{candidate_id}", status_code=204)
+def delete_candidate(candidate_id: str):
+    """Delete a candidate and all its materials (hard delete).
+
+    Also removes any decision kit associations. Returns 204 on success, 404 if not found.
+    """
+    deleted = candidate_service.delete_candidate(candidate_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return None
