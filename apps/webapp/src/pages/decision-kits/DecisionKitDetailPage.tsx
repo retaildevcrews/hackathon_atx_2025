@@ -5,7 +5,6 @@ import { useRubricSummary } from '../../hooks/useRubricSummary';
 import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
-import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
