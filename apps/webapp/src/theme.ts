@@ -126,6 +126,8 @@ export const getAppTheme = (mode: ThemeMode) =>
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
+            // Ensure inputs (including multiline textareas) have proper contrast in dark mode
+            backgroundColor: mode === 'dark' ? '#1b241b' : undefined,
             '&:hover .MuiOutlinedInput-notchedOutline': {
               borderColor: '#228B22',
             },
@@ -133,9 +135,54 @@ export const getAppTheme = (mode: ThemeMode) =>
               borderColor: '#228B22',
               borderWidth: 2,
             },
+            // Text color inside inputs/textarea for readability
+            '& .MuiInputBase-input': {
+              color: mode === 'dark' ? '#e6efe6' : undefined,
+            },
+            '& textarea': {
+              color: mode === 'dark' ? '#e6efe6' : undefined,
+            },
+            // Placeholder color
+            '& .MuiInputBase-input::placeholder': {
+              color: mode === 'dark' ? 'rgba(230, 239, 230, 0.6)' : undefined,
+              opacity: 1,
+            },
+            // Disabled state contrast (TextField disabled or non-editable view)
+            '&.Mui-disabled': {
+              backgroundColor: mode === 'dark' ? '#161d16' : undefined,
+            },
+            '& .MuiInputBase-input.Mui-disabled': {
+              color: mode === 'dark' ? 'rgba(230, 239, 230, 0.65)' : undefined,
+              WebkitTextFillColor: mode === 'dark' ? 'rgba(230, 239, 230, 0.65)' : undefined,
+            },
+            '& textarea.Mui-disabled': {
+              color: mode === 'dark' ? 'rgba(230, 239, 230, 0.65)' : undefined,
+              WebkitTextFillColor: mode === 'dark' ? 'rgba(230, 239, 230, 0.65)' : undefined,
+            },
+            '& .MuiInputBase-input.Mui-disabled::placeholder': {
+              color: mode === 'dark' ? 'rgba(230, 239, 230, 0.45)' : undefined,
+              opacity: 1,
+            },
+            // Readonly state contrast
+            '& .MuiInputBase-input[readonly]': {
+              color: mode === 'dark' ? '#e6efe6' : undefined,
+              WebkitTextFillColor: mode === 'dark' ? '#e6efe6' : undefined,
+            },
+            '& textarea[readonly]': {
+              color: mode === 'dark' ? '#e6efe6' : undefined,
+              WebkitTextFillColor: mode === 'dark' ? '#e6efe6' : undefined,
+            },
           },
           notchedOutline: {
             // subtle default outline to match palette
+          },
+        },
+      },
+      // Ensure surfaces default to dark backgrounds in dark mode
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'dark' ? '#1b241b' : undefined,
           },
         },
       },
@@ -224,6 +271,14 @@ export const getAppTheme = (mode: ThemeMode) =>
             backgroundColor: '#228B22',
             color: '#ffffff',
           },
+          ...(mode === 'dark'
+            ? {
+                // Fallback override for a generated class observed with a light background
+                '.css-1ji4a1l': {
+                  backgroundColor: '#1b241b !important',
+                },
+              }
+            : {}),
         },
       },
     },
