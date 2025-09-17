@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.utils.db import SessionLocal
@@ -23,7 +23,7 @@ class RubricValidationError(ValueError):
         super().__init__(detail or code)
 
 
-def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEntryCreate]):
+def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEntryCreate], existing_weights: Optional[Dict[str, float]] = None):
     if not entries:
         return []
     ids_seen = set()
@@ -46,19 +46,36 @@ def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEnt
         ids_seen.add(cid)
         weight = e.weight
         if weight is None:
-            weight = settings.DEFAULT_RUBRIC_WEIGHT
+            # Preserve prior weight if available for this criteriaId (update flow)
+            if existing_weights is not None and cid and cid in existing_weights:
+                weight = existing_weights[cid]
+            else:
+                weight = settings.DEFAULT_RUBRIC_WEIGHT
         # Type / numeric validation
         if not isinstance(weight, (int, float)) or isinstance(weight, bool):
             raise RubricValidationError("INVALID_WEIGHT", detail="weight must be numeric", index=idx)
         if not math.isfinite(weight):
             raise RubricValidationError("INVALID_WEIGHT", detail="weight must be finite", index=idx)
-        if weight == 0 and not settings.ALLOW_ZERO_WEIGHT:
-            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be > 0", index=idx)
-        if weight < 0:
-            raise RubricValidationError("INVALID_WEIGHT", detail="weight must be >= 0" if settings.ALLOW_ZERO_WEIGHT else "weight must be > 0", index=idx)
-        if weight > settings.MAX_RUBRIC_WEIGHT:
-            raise RubricValidationError("WEIGHT_TOO_LARGE", detail="weight above maximum", index=idx, limit=settings.MAX_RUBRIC_WEIGHT)
+        # Normalize to float
         weight = float(weight)
+        # Enforce configurable product rule: min..max inclusive, in step increments
+        min_w = settings.RUBRIC_WEIGHT_MIN
+        max_w = settings.RUBRIC_WEIGHT_MAX
+        step = settings.RUBRIC_WEIGHT_STEP
+        if weight < min_w or weight > max_w:
+            raise RubricValidationError(
+                "INVALID_WEIGHT",
+                detail=f"weight must be between {min_w} and {max_w}",
+                index=idx,
+            )
+        n = round(weight / step)
+        if abs(weight - (n * step)) > 1e-9:
+            raise RubricValidationError(
+                "INVALID_WEIGHT",
+                detail=f"weight must be in {step} increments",
+                index=idx,
+            )
+        # Append for each entry
         normalized.append(RubricCriteriaEntry(criteriaId=cid, weight=weight))
 
     # Validate existence of criteria ids
@@ -67,6 +84,10 @@ def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEnt
     missing = [n.criteriaId for n in normalized if n.criteriaId not in existing_ids]
     if missing:
         raise RubricValidationError("INVALID_CRITERIA", detail=f"invalid criteria ids: {missing}")
+    # Enforce that weights sum to 1.0 (within tolerance)
+    total = sum(float(n.weight) for n in normalized)
+    if abs(total - 1.0) > 1e-6:
+        raise RubricValidationError("INVALID_WEIGHT_SUM", detail=f"weights must sum to 1.0 (got {total:.6f})")
     return normalized
 
 
@@ -210,7 +231,9 @@ def update_rubric(rubric_id: str, data: RubricUpdate) -> Optional[Rubric]:
     if data.description is not None:
         orm.description = data.description
     if data.criteria is not None:
-        normalized_entries = _normalize_and_validate_entries(db, data.criteria)
+        # Capture existing weights by criterion_id to preserve when incoming weight is omitted
+        existing_weights_map = {rc.criterion_id: float(rc.weight) for rc in orm.criteria_assoc}
+        normalized_entries = _normalize_and_validate_entries(db, data.criteria, existing_weights=existing_weights_map)
         # Clear existing association rows explicitly so flush removes them
         for existing in list(orm.criteria_assoc):
             db.delete(existing)
