@@ -32,12 +32,12 @@ class DecisionKitCandidateORM(Base):
     id = Column(String, primary_key=True, index=True)
     decision_kit_id = Column(String, ForeignKey("decision_kits.id", ondelete="CASCADE"), nullable=False, index=True)
     candidate_id = Column(String, ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=False)
-    candidate_name = Column(String, nullable=False)
     position = Column(Integer, nullable=False)
 
     decision_kit = relationship("DecisionKitORM", back_populates="candidates_assoc")
+    candidate = relationship("CandidateORM", lazy="joined")
 
     __table_args__ = (
-        UniqueConstraint("decision_kit_id", "candidate_id", name="uq_decision_kit_candidate"),
+    UniqueConstraint("decision_kit_id", "candidate_id", name="uq_decision_kit_candidate"),
         Index("ix_decision_kit_position", "decision_kit_id", "position"),
     )

@@ -16,14 +16,16 @@ def _normalize_name(name: str) -> str:
 
 
 def _serialize(orm: DecisionKitORM) -> DecisionKit:
-    candidates = [
-        DecisionKitCandidateRef(
+    candidates = []
+    sorted_assoc = sorted(orm.candidates_assoc, key=lambda x: x.position)
+    for idx, c in enumerate(sorted_assoc):
+        cand_name = c.candidate.name if c.candidate else ""
+        candidates.append(DecisionKitCandidateRef(
             id=c.id,
             candidateId=c.candidate_id,
-            candidateName=c.candidate_name,
+            candidateName=cand_name,
             position=idx,
-        ) for idx, c in enumerate(sorted(orm.candidates_assoc, key=lambda x: x.position))
-    ]
+        ))
     return DecisionKit(
         id=orm.id,
         name=orm.name_original,
@@ -75,16 +77,16 @@ def create_decision_kit(data: DecisionKitCreate) -> DecisionKit:
         db.add(kit)
         db.flush()
         for pos, cid in enumerate(data.candidateIds):
-            cand = db.query(CandidateORM).filter(CandidateORM.id == cid).first()
             db.add(DecisionKitCandidateORM(
                 id=str(uuid.uuid4()),
                 decision_kit_id=kit.id,
                 candidate_id=cid,
-                candidate_name=cand.name if cand else "",  # cand must exist per validation
                 position=pos,
             ))
         db.commit(); db.refresh(kit)
-        kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc)).filter(DecisionKitORM.id == kit_id).first()
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
         return _serialize(kit)
     finally:
         db.close()
@@ -93,7 +95,9 @@ def create_decision_kit(data: DecisionKitCreate) -> DecisionKit:
 def get_decision_kit(kit_id: str) -> Optional[DecisionKit]:
     db = SessionLocal()
     try:
-        kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc)).filter(DecisionKitORM.id == kit_id).first()
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
         if not kit:
             return None
         return _serialize(kit)
@@ -104,7 +108,9 @@ def get_decision_kit(kit_id: str) -> Optional[DecisionKit]:
 def list_decision_kits(name_filter: Optional[str] = None) -> List[DecisionKit]:
     db = SessionLocal(); close=True
     try:
-        q = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc))
+        q = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        )
         if name_filter:
             q = q.filter(DecisionKitORM.name_normalized.contains(name_filter.lower()))
         rows = q.order_by(DecisionKitORM.created_at.desc()).all()
@@ -117,7 +123,9 @@ def list_decision_kits(name_filter: Optional[str] = None) -> List[DecisionKit]:
 def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optional[DecisionKit]:
     db = SessionLocal()
     try:
-        kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc)).filter(DecisionKitORM.id == kit_id).first()
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
         if not kit:
             return None
         if kit.status != "OPEN":
@@ -128,12 +136,10 @@ def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optiona
             db.delete(assoc)
         db.flush()
         for pos, cid in enumerate(data.candidateIds):
-            cand = db.query(CandidateORM).filter(CandidateORM.id == cid).first()
             db.add(DecisionKitCandidateORM(
                 id=str(uuid.uuid4()),
                 decision_kit_id=kit.id,
                 candidate_id=cid,
-                candidate_name=cand.name if cand else "",
                 position=pos,
             ))
         kit.updated_at = datetime.now(timezone.utc)
