@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, Card, CardActionArea, CardContent, Typography, Skeleton, Box, Alert, Button } from '@mui/material';
+import { Grid, Card, CardActionArea, CardContent, Typography, Skeleton, Box, Alert, Button, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useDecisionKits } from '../../hooks/useDecisionKits';
 
@@ -15,7 +15,10 @@ export const DecisionKitListPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Decision Kits</Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>Decision Kits</Typography>
+        <Button variant="contained" color="primary" onClick={() => navigate('/decision-kits/new')}>New Decision Kit</Button>
+      </Stack>
       <Grid container spacing={2}>
         {loading && !kits && skeletonArray.map((_, idx) => (
           <Grid item xs={12} sm={6} md={4} key={idx}>

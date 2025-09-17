@@ -36,30 +36,51 @@ The refactored Decision Kits interface introduces a routed experience with list 
 
 Feature Flag:
 
-- Controlled by `VITE_ENABLE_DECISION_KITS_UI` (default enabled). Set to `false` to fall back to legacy rubric manager.
+- Controlled by `VITE_ENABLE_DECISION_KITS_UI` (if implemented) default enabled.
 
 Routes:
 
-- `/` — Decision kit list (cards with name and description)
-- `/decision-kits/:kitId` — Detail view including rubric summary and candidate list
+- `/` — Decision kit list (cards) + New Decision Kit button
+- `/decision-kits/new` — Create form
+- `/decision-kits/:kitId` — Detail view
 
 Key Files:
 
-- `src/api/decisionKits.ts` — Fetch functions with in-memory cache
-- `src/hooks/useDecisionKits.ts` & `useDecisionKit.ts` — Data hooks with retry
+- `src/api/decisionKits.ts`
+- `src/hooks/useDecisionKits.ts`, `src/hooks/useDecisionKit.ts`
 - `src/pages/decision-kits/DecisionKitListPage.tsx`
+- `src/pages/decision-kits/AddDecisionKitPage.tsx`
 - `src/pages/decision-kits/DecisionKitDetailPage.tsx`
-- `src/pages/layout/AppLayout.tsx`
 
 Testing:
 
-- `src/__tests__/DecisionKits.test.tsx` includes basic list empty state and detail rubric assertions.
+- `src/__tests__/DecisionKitCreateDelete.test.tsx` basic form tests
 
 Styling & Accessibility:
 
-- Material UI components
-- Skeleton loaders during initial fetch
-- `twoLineClamp` utility class for description truncation
+- Material UI components, skeleton loaders, accessible dialog & buttons
+
+## Decision Kits: Create & Delete
+
+The UI supports creating new decision kits and deleting existing ones (with cascade removal of associated rubric links, weights, candidates, materials, and assessments).
+
+Creating a kit:
+
+- Navigate to the Decision Kits list.
+- Click the "New Decision Kit" button (or navigate directly to `/decision-kits/new`).
+- Provide a required name and optional description.
+- On success you are redirected to the kit detail view.
+
+Deleting a kit:
+
+- From the kit detail page click the Delete button.
+- Confirm cascade deletion in the dialog (checkbox required) and click Delete.
+- On success you are returned to the list with a confirmation toast.
+
+Edge Cases:
+
+- If the kit was already removed (404), the UI treats the deletion as successful and shows a warning toast.
+- Locked kits (409) display an error and remain intact.
 
 ## Testing
 Add unit and integration tests in `src/__tests__/` (recommended).

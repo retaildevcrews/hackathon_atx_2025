@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DecisionKitListItem } from '../types/decisionKits';
-import { fetchDecisionKits } from '../api/decisionKits';
+import { fetchDecisionKits, addKitToCacheList, removeKitFromCacheList } from '../api/decisionKits';
 
 export function useDecisionKits() {
   const [data, setData] = useState<DecisionKitListItem[] | null>(null);
@@ -22,5 +22,8 @@ export function useDecisionKits() {
 
   const retry = () => setRetryIndex((i: number) => i + 1);
 
-  return { kits: data, loading, error, retry };
+  const addKit = (kit: DecisionKitListItem) => setData(prev => addKitToCacheList(prev, kit));
+  const removeKit = (id: string) => setData(prev => removeKitFromCacheList(prev, id));
+
+  return { kits: data, loading, error, retry, addKit, removeKit, setKits: setData };
 }
