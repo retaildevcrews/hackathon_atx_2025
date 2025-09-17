@@ -118,25 +118,82 @@ class AzureSearchService:
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
+                # First try direct document lookup using the ID as primary key
                 resp = await client.get(url, headers=headers)
-                if resp.status_code == 404:
-                    logger.warning(f"Document with ID '{document_id}' not found in Azure Search")
-                    return None
+                if resp.status_code == 200:
+                    doc = resp.json()
+                    return {
+                        "id": doc.get("id", document_id),
+                        "content": doc.get("content", ""),
+                        "title": doc.get("title", ""),
+                        "name": doc.get("name", ""),
+                        "candidate_id": doc.get("candidate_id", ""),
+                        "decision_kit_id": doc.get("decision_kit_id", ""),
+                    }
 
-                resp.raise_for_status()
-                doc = resp.json()
+                elif resp.status_code == 404:
+                    # Direct lookup failed, try searching by candidate_id field
+                    logger.info(f"Direct lookup failed for '{document_id}', trying search by candidate_id field")
+                    return await self._search_by_candidate_id(document_id)
 
-                return {
-                    "id": doc.get("id", document_id),
-                    "content": doc.get("content", ""),
-                    "title": doc.get("title", ""),
-                    "name": doc.get("name", ""),
-                    "candidate_id": doc.get("candidate_id", ""),
-                    "decision_kit_id": doc.get("decision_kit_id", ""),
-                }
+                else:
+                    resp.raise_for_status()
 
         except Exception as exc:  # noqa: BLE001
             logger.exception(f"Failed to retrieve document '{document_id}' from Azure Search", exc_info=exc)
+            return None
+
+    async def _search_by_candidate_id(self, candidate_id: str) -> dict[str, Any] | None:
+        """Search for a document by candidate_id field instead of primary key.
+
+        Args:
+            candidate_id: The candidate_id value to search for
+
+        Returns:
+            Document data if found, None otherwise
+        """
+        if not self.enabled:
+            return None
+
+        endpoint_raw = self.settings.azure_search_endpoint or ""
+        endpoint = endpoint_raw.rstrip("/")
+        url = f"{endpoint}/indexes/{self.settings.azure_search_index}/docs/search?api-version=2023-11-01"
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": self.settings.azure_search_api_key or "",
+        }
+
+        payload = {
+            "search": "*",
+            "filter": f"candidate_id eq '{candidate_id}'",
+            "top": 1,
+            "select": "id,title,name,candidate_id,decision_kit_id,content"
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+
+                documents = data.get("value", [])
+                if documents:
+                    doc = documents[0]  # Take first match
+                    logger.info(f"Found document by candidate_id '{candidate_id}': {doc.get('id', 'N/A')}")
+                    return {
+                        "id": doc.get("id", candidate_id),
+                        "content": doc.get("content", ""),
+                        "title": doc.get("title", ""),
+                        "name": doc.get("name", ""),
+                        "candidate_id": doc.get("candidate_id", ""),
+                        "decision_kit_id": doc.get("decision_kit_id", ""),
+                    }
+                else:
+                    logger.warning(f"No document found with candidate_id '{candidate_id}'")
+                    return None
+
+        except Exception as exc:
+            logger.exception(f"Failed to search by candidate_id '{candidate_id}'", exc_info=exc)
             return None
 
     async def get_documents_by_ids(self, document_ids: list[str]) -> dict[str, dict[str, Any]]:
