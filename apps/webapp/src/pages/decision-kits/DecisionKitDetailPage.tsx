@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -13,6 +14,7 @@ import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
 import { AttachRubricForm } from '../../components/AttachRubricForm';
 import { fetchRubricSummary } from '../../api/rubrics';
 import { assignRubricToDecisionKit } from '../../api/decisionKits';
+import { evaluateCandidates } from '../../api/agent';
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
@@ -24,6 +26,8 @@ export const DecisionKitDetailPage: React.FC = () => {
   const effectiveRubric = attachedRubric || kit?.rubric || rubric;
   const [rubricOpen, setRubricOpen] = useState(true);
   const [candidatesOpen, setCandidatesOpen] = useState(true);
+  const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
   // const [attachError, setAttachError] = useState<string | null>(null);
 
   if (process.env.NODE_ENV !== 'production') {
@@ -171,6 +175,33 @@ export const DecisionKitDetailPage: React.FC = () => {
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<PlayArrowIcon />}
+                          disabled={!currentRubricId || evaluatingId === cd.id}
+                          onClick={async () => {
+                            if (!currentRubricId) return;
+                            try {
+                              setEvaluatingId(cd.id);
+                              const resp = await evaluateCandidates(String(currentRubricId), [String(cd.id)]);
+                              if (resp.status === 'success') {
+                                const msg = resp.evaluation_id ? `Evaluation started: ${resp.evaluation_id}` : 'Evaluation complete';
+                                setToast({ open: true, message: msg, severity: 'success' });
+                              } else {
+                                setToast({ open: true, message: resp.error || 'Evaluation failed', severity: 'error' });
+                              }
+                            } catch (e: any) {
+                              setToast({ open: true, message: e?.message || 'Evaluation error', severity: 'error' });
+                            } finally {
+                              setEvaluatingId(null);
+                            }
+                          }}
+                        >
+                          Evaluate
+                        </Button>
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -178,6 +209,13 @@ export const DecisionKitDetailPage: React.FC = () => {
           </Grid>
         </Collapse>
       </Box>
+      <Snackbar
+        open={!!toast?.open}
+        autoHideDuration={4000}
+        onClose={() => setToast(t => t ? { ...t, open: false } : t)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        message={toast?.message}
+      />
     </Box>
   );
 };
