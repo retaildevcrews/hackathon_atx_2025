@@ -126,7 +126,6 @@ def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optiona
         kit = db.query(DecisionKitORM).options(
             joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
         ).filter(DecisionKitORM.id == kit_id).first()
-        kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)).filter(DecisionKitORM.id == kit_id).first()
         if not kit:
             return None
         if kit.status != "OPEN":
