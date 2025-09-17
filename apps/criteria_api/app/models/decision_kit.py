@@ -39,6 +39,7 @@ class DecisionKit(BaseModel):
     rubricVersion: str
     rubricPublished: bool
     status: str
+    evaluation_id: Optional[str] = None
     candidates: List[DecisionKitCandidateRef] = Field(default_factory=list)
     createdAt: datetime
     updatedAt: datetime

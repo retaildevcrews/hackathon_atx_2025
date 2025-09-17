@@ -7,7 +7,13 @@ from app.models.candidate import (
     CandidateMaterial,
     CandidateMaterialList,
 )
-from app.services import candidate_service, candidate_material_service
+from app.models.evaluation_result import (
+    EvaluationResult,
+    EvaluationResultCreate,
+    EvaluationResultSummary,
+    EvaluationResultList,
+)
+from app.services import candidate_service, candidate_material_service, evaluation_service
 
 router = APIRouter()
 
@@ -89,4 +95,62 @@ def delete_candidate(candidate_id: str):
     deleted = candidate_service.delete_candidate(candidate_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    return None
+
+
+# Evaluation Results Routes
+
+@router.post("/evaluations", response_model=EvaluationResult, status_code=201)
+def create_evaluation_result(data: EvaluationResultCreate):
+    """Create a new evaluation result.
+
+    This endpoint is used by the agent service to store evaluation results
+    and return an evaluation ID for future reference.
+    """
+    try:
+        return evaluation_service.create_evaluation_result(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create evaluation result: {str(e)}")
+
+
+@router.get("/evaluations", response_model=EvaluationResultList)
+def list_evaluation_results(limit: int = 50, offset: int = 0):
+    """List evaluation results with pagination."""
+    try:
+        return evaluation_service.list_evaluation_results(limit=limit, offset=offset)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list evaluation results: {str(e)}")
+
+
+@router.get("/evaluations/{evaluation_id}", response_model=EvaluationResult)
+def get_evaluation_result(evaluation_id: str):
+    """Get a specific evaluation result by ID."""
+    result = evaluation_service.get_evaluation_result(evaluation_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Evaluation result not found")
+    return result
+
+
+@router.get("/{candidate_id}/evaluations", response_model=List[EvaluationResultSummary])
+def get_candidate_evaluations(candidate_id: str):
+    """Get all evaluation results that include this candidate."""
+    # Ensure candidate exists
+    c = candidate_service.get_candidate(candidate_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        return evaluation_service.get_evaluation_results_by_candidate(candidate_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get candidate evaluations: {str(e)}")
+
+
+@router.delete("/evaluations/{evaluation_id}", status_code=204)
+def delete_evaluation_result(evaluation_id: str):
+    """Delete an evaluation result and all its associations."""
+    deleted = evaluation_service.delete_evaluation_result(evaluation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Evaluation result not found")
     return None

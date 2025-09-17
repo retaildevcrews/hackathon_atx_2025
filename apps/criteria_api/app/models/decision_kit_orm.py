@@ -15,6 +15,7 @@ class DecisionKitORM(Base):
     rubric_version = Column(String, nullable=False)
     rubric_published = Column(Boolean, nullable=False, default=False)
     status = Column(String, nullable=False, default="OPEN")  # OPEN, CLOSED, ARCHIVED (future)
+    evaluation_id = Column(String, ForeignKey("evaluation_results.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -24,6 +25,8 @@ class DecisionKitORM(Base):
         cascade="all, delete-orphan",
         order_by="DecisionKitCandidateORM.position",
     )
+
+    evaluation = relationship("EvaluationResultORM", lazy="joined")
 
 
 class DecisionKitCandidateORM(Base):
