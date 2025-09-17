@@ -84,6 +84,10 @@ def _normalize_and_validate_entries(db: Session, entries: List[RubricCriteriaEnt
     missing = [n.criteriaId for n in normalized if n.criteriaId not in existing_ids]
     if missing:
         raise RubricValidationError("INVALID_CRITERIA", detail=f"invalid criteria ids: {missing}")
+    # Enforce that weights sum to 1.0 (within tolerance)
+    total = sum(float(n.weight) for n in normalized)
+    if abs(total - 1.0) > 1e-6:
+        raise RubricValidationError("INVALID_WEIGHT_SUM", detail=f"weights must sum to 1.0 (got {total:.6f})")
     return normalized
 
 

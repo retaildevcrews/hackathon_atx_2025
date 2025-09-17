@@ -4,8 +4,8 @@ import { Rubric } from '../types/rubric';
 import type { Criteria as CriteriaModel } from '../hooks/useCriteria';
 import { useCriteria } from '../hooks/useCriteria';
 import axios from 'axios';
-import { Box, Typography, TextField, Button, FormControl, FormHelperText, Paper, Stack, FormLabel, IconButton, Divider, Chip } from '@mui/material';
-import { Add, Delete, Edit } from '@mui/icons-material';
+import { Box, Typography, TextField, Button, FormControl, FormHelperText, Paper, Stack, FormLabel, IconButton, Divider, Chip, Collapse, FormControlLabel, Switch } from '@mui/material';
+import { Add, Delete, Edit, ExpandMore, ExpandLess } from '@mui/icons-material';
 
 interface RubricFormProps {
   initialRubric?: Rubric;
@@ -35,6 +35,8 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
   const [touchedName, setTouchedName] = useState(false);
   const [touchedDescription, setTouchedDescription] = useState(false);
   const [touchedCriteria, setTouchedCriteria] = useState(false);
+  const [expandedAll, setExpandedAll] = useState<boolean>(false);
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [weightMin, setWeightMin] = useState<number>(0.05);
   const [weightMax, setWeightMax] = useState<number>(1.0);
   const [weightStep, setWeightStep] = useState<number>(0.05);
@@ -56,6 +58,32 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
       // keep defaults on failure
     });
   }, []);
+
+  // Keep expandedRows in sync with entries and expandedAll
+  useEffect(() => {
+    setExpandedRows(prev => {
+      const next: Record<number, boolean> = {};
+      entries.forEach((_, i) => {
+        next[i] = expandedAll ? true : !!prev[i];
+      });
+      return next;
+    });
+  }, [entries, expandedAll]);
+
+  function toggleRowExpanded(index: number) {
+    setExpandedRows(prev => ({ ...prev, [index]: !prev[index] }));
+  }
+
+  function handleToggleExpandAll(checked: boolean) {
+    setExpandedAll(checked);
+    setExpandedRows(() => {
+      const next: Record<number, boolean> = {};
+      entries.forEach((_, i) => {
+        next[i] = checked;
+      });
+      return next;
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -164,10 +192,18 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
   const nameErrorText = !name.trim() ? 'Name is required.' : '';
   const descriptionErrorText = !description.trim() ? 'Description is required.' : '';
   const criteriaErrorText = entries.length === 0 ? 'Please add at least one criterion.' : '';
+  // Weights must all be present and sum to 1.0 (tolerance for float rounding)
+  const weights = entries.map(e => e.weight).filter((w): w is number => typeof w === 'number');
+  const allHaveWeights = entries.length > 0 && weights.length === entries.length;
+  const weightSum = weights.reduce((acc, w) => acc + w, 0);
+  const weightTol = 1e-6;
+  const weightsErrorText = !allHaveWeights
+    ? 'Please enter a weight for each criterion.'
+    : (Math.abs(weightSum - 1) > weightTol ? `Weights must sum to 1. Current total: ${weightSum.toFixed(2)}` : '');
   const showNameError = (submitted || touchedName) && !!nameErrorText;
   const showDescriptionError = (submitted || touchedDescription) && !!descriptionErrorText;
-  const showCriteriaError = (submitted || touchedCriteria) && !!criteriaErrorText;
-  const formInvalid = !!nameErrorText || !!descriptionErrorText || !!criteriaErrorText;
+  const showCriteriaError = (submitted || touchedCriteria) && (!!criteriaErrorText || !!weightsErrorText);
+  const formInvalid = !!nameErrorText || !!descriptionErrorText || !!criteriaErrorText || !!weightsErrorText;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -200,6 +236,14 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
             <FormControl error={showCriteriaError} component="fieldset" variant="standard" sx={{ width: '100%' }}>
               <FormLabel component="legend" sx={{ mb: 1 }}>Criteria</FormLabel>
               <Stack spacing={1} sx={{ mb: 1 }}>
+                {!!entries.length && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <FormControlLabel
+                      control={<Switch checked={expandedAll} onChange={(e) => handleToggleExpandAll(e.target.checked)} />}
+                      label={expandedAll ? 'Collapse all' : 'Expand all'}
+                    />
+                  </Box>
+                )}
                 {entries.map((e, idx) => (
                   <Paper key={`${e.id ?? 'new'}-${idx}`} variant="outlined" sx={{ p: 1.5 }}>
                     <Stack spacing={1}>
@@ -221,6 +265,9 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                           sx={{ width: 160 }}
                           inputProps={{ min: weightMin, max: weightMax, step: weightStep }}
                         />
+                        <IconButton aria-label={expandedRows[idx] ? 'collapse' : 'expand'} onClick={() => toggleRowExpanded(idx)}>
+                          {expandedRows[idx] ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
                         {e.id && (
                           <IconButton aria-label="edit criterion" onClick={() => startEditEntry(e.id)}>
                             <Edit />
@@ -230,34 +277,36 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                           <Delete />
                         </IconButton>
                       </Stack>
-                      <Box sx={{ width: '100%' }}>
-                        <Box
-                          sx={{
-                            display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                            gap: 1
-                          }}
-                        >
-                          <TextField
-                            label="Description"
-                            size="small"
-                            value={e.description ?? ''}
-                            onChange={ev => updateEntry(idx, { description: ev.target.value })}
-                            onBlur={() => persistIfNeeded(idx)}
-                            multiline
-                            minRows={2}
-                          />
-                          <TextField
-                            label="Definition"
-                            size="small"
-                            value={e.definition ?? ''}
-                            onChange={ev => updateEntry(idx, { definition: ev.target.value })}
-                            onBlur={() => persistIfNeeded(idx)}
-                            multiline
-                            minRows={2}
-                          />
+                      <Collapse in={!!expandedRows[idx]} timeout="auto" unmountOnExit>
+                        <Box sx={{ width: '100%' }}>
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                              gap: 1
+                            }}
+                          >
+                            <TextField
+                              label="Description"
+                              size="small"
+                              value={e.description ?? ''}
+                              onChange={ev => updateEntry(idx, { description: ev.target.value })}
+                              onBlur={() => persistIfNeeded(idx)}
+                              multiline
+                              minRows={2}
+                            />
+                            <TextField
+                              label="Definition"
+                              size="small"
+                              value={e.definition ?? ''}
+                              onChange={ev => updateEntry(idx, { definition: ev.target.value })}
+                              onBlur={() => persistIfNeeded(idx)}
+                              multiline
+                              minRows={2}
+                            />
+                          </Box>
                         </Box>
-                      </Box>
+                      </Collapse>
                     </Stack>
                   </Paper>
                 ))}
@@ -284,7 +333,9 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                   Add
                 </Button>
               </Stack>
-              <FormHelperText>{showCriteriaError ? criteriaErrorText : errorText ? errorText : ' '}</FormHelperText>
+              <FormHelperText>
+                {showCriteriaError ? (criteriaErrorText || weightsErrorText) : (errorText ? errorText : ' ')}
+              </FormHelperText>
               {!!criteria.length && (
                 <Box sx={{ mt: 1 }}>
                   <Typography variant="caption" color="text.secondary">Available criteria:</Typography>
