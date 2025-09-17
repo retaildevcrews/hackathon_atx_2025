@@ -5,6 +5,7 @@ import { DecisionKitListPage } from './decision-kits/DecisionKitListPage';
 import { DecisionKitDetailPage } from './decision-kits/DecisionKitDetailPage';
 import { AddDecisionKitPage } from './decision-kits/AddDecisionKitPage';
 import { RubricsListPage, RubricDetailPage, AddEditRubricPage } from './rubrics';
+import { LegacyRubricApp } from './LegacyRubricApp';
 
 export const App: React.FC = () => {
   const enableDecisionKits =

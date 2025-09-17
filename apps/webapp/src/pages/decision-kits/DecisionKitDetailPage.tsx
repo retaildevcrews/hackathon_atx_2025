@@ -8,9 +8,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
 import { AttachRubricForm } from '../../components/AttachRubricForm';
-import { assignRubricToDecisionKit } from '../../api/decisionKits';
 import { fetchRubricSummary } from '../../api/rubrics';
-// import { assignRubricToDecisionKit, primeDecisionKitCache } from '../../api/decisionKits';
+import { assignRubricToDecisionKit } from '../../api/decisionKits';
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
