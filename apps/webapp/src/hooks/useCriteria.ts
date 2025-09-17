@@ -51,6 +51,13 @@ export function useCriteria() {
   const create = useCallback(async (data: Omit<Criteria, 'id'>) => {
     const res = await api.post<Criteria>(`/criteria/`, data);
     setCriteria(prev => [res.data, ...prev]);
+    return res.data;
+  }, []);
+
+  const update = useCallback(async (id: string, data: Omit<Criteria, 'id'>) => {
+    const res = await api.put<Criteria>(`/criteria/${id}`, data);
+    setCriteria(prev => prev.map(c => (c.id === id ? res.data : c)));
+    return res.data;
   }, []);
 
   const remove = useCallback(async (id: string) => {
@@ -58,5 +65,5 @@ export function useCriteria() {
     setCriteria(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  return { criteria, loading, error, refresh: fetchAll, create, remove, apiBase: API_BASE };
+  return { criteria, loading, error, refresh: fetchAll, create, update, remove, apiBase: API_BASE };
 }

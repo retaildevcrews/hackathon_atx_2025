@@ -1,3 +1,36 @@
+# Webapp Theming
+
+The app uses Material UI with a centralized theme in `src/theme.ts`.
+
+- Primary color: forest green (`#228B22`)
+- Secondary color: olive green (`#808000`)
+- Light and dark modes are supported via a theme toggle in the AppBar.
+
+## Where to edit colors
+
+- Update palette and component overrides in `src/theme.ts`. The theme is produced by `getAppTheme(mode)`.
+- Common places to adjust:
+   - `palette.primary` / `palette.secondary`
+   - `components.MuiAppBar.styleOverrides`
+   - `components.MuiButton.styleOverrides`
+
+## Light/Dark toggle
+
+A toggle button in the header switches between light and dark modes at runtime. The initial mode is based on the user's `prefers-color-scheme`.
+
+If you want to remove the toggle and hardcode light mode, set `mode: 'light'` in `src/main.tsx` and remove the toggle button from `src/pages/layout/AppLayout.tsx`.
+
+```ts
+// src/theme.ts
+export const getAppTheme = (mode: 'light' | 'dark') => createTheme({
+   palette: { mode, primary: { main: '#228B22' }, secondary: { main: '#808000' } }
+});
+```
+
+```tsx
+// src/main.tsx (excerpt)
+const [mode, setMode] = useState<ThemeMode>('light');
+```
 # Webapp: Criteria & Rubric Manager
 
 This React app allows users to manage document analysis criteria and build rubrics composed of multiple criteria. It integrates with backend APIs for full CRUD operations.
