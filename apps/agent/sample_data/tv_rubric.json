@@ -1,0 +1,113 @@
+{
+  "rubric_name": "tv_rubric",
+  "criteria": [
+    {
+      "name": "Picture Quality",
+      "weight": "20%",
+      "description": "Measures resolution, contrast, color accuracy, and HDR support.",
+      "definition": {
+        "Excellent (5)": "OLED/QLED, 4K/8K, HDR10+, Dolby Vision",
+        "Good (4)": "High-res LED, good contrast",
+        "Fair (3)": "Standard HD, decent colors",
+        "Poor (2)": "Washed out or uneven",
+        "Very Poor (1)": "Blurry or pixelated"
+      }
+    },
+    {
+      "name": "Sound Quality",
+      "weight": "10%",
+      "description": "Evaluates speaker clarity, bass, and surround sound support.",
+      "definition": {
+        "Excellent (5)": "Dolby Atmos, rich sound",
+        "Good (4)": "Clear, good volume",
+        "Fair (3)": "Average, lacks depth",
+        "Poor (2)": "Tinny or muffled",
+        "Very Poor (1)": "Distorted or weak"
+      }
+    },
+    {
+      "name": "Smart App Support",
+      "weight": "15%",
+      "description": "Assesses streaming app availability and smart interface performance.",
+      "definition": {
+        "Excellent (5)": "Full ecosystem, fast UI",
+        "Good (4)": "Most major apps, responsive",
+        "Fair (3)": "Limited apps, some lag",
+        "Poor (2)": "Few apps, slow UI",
+        "Very Poor (1)": "No smart features"
+      }
+    },
+    {
+      "name": "Gaming Performance",
+      "weight": "15%",
+      "description": "Evaluates input lag, refresh rate, HDMI 2.1, and responsiveness.",
+      "definition": {
+        "Excellent (5)": "Low lag, 120Hz, VRR",
+        "Good (4)": "Good response, 60Hz",
+        "Fair (3)": "Moderate lag",
+        "Poor (2)": "Noticeable lag",
+        "Very Poor (1)": "Not suitable for gaming"
+      }
+    },
+    {
+      "name": "Movie Watching Experience",
+      "weight": "10%",
+      "description": "Focuses on cinematic modes, ambient lighting, and motion handling.",
+      "definition": {
+        "Excellent (5)": "Cinematic modes, immersive sound",
+        "Good (4)": "Good picture modes",
+        "Fair (3)": "Basic settings",
+        "Poor (2)": "Poor contrast/sound",
+        "Very Poor (1)": "Unwatchable quality"
+      }
+    },
+    {
+      "name": "Ease of Use",
+      "weight": "10%",
+      "description": "Considers interface intuitiveness, remote design, and setup.",
+      "definition": {
+        "Excellent (5)": "Intuitive UI, voice control",
+        "Good (4)": "Simple UI, decent remote",
+        "Fair (3)": "Some learning curve",
+        "Poor (2)": "Confusing interface",
+        "Very Poor (1)": "Frustrating to use"
+      }
+    },
+    {
+      "name": "Family-Friendly Features",
+      "weight": "10%",
+      "description": "Includes parental controls, kid-safe modes, and multi-user profiles.",
+      "definition": {
+        "Excellent (5)": "Full controls, profiles, kid modes",
+        "Good (4)": "Some controls, basic profiles",
+        "Fair (3)": "Limited features",
+        "Poor (2)": "Few safety options",
+        "Very Poor (1)": "No family support"
+      }
+    },
+    {
+      "name": "Design & Aesthetics",
+      "weight": "5%",
+      "description": "Evaluates how well the TV fits into a shared space visually.",
+      "definition": {
+        "Excellent (5)": "Sleek, minimal bezel",
+        "Good (4)": "Modern, acceptable look",
+        "Fair (3)": "Bulky but okay",
+        "Poor (2)": "Outdated design",
+        "Very Poor (1)": "Ugly or intrusive"
+      }
+    },
+    {
+      "name": "Price/Value",
+      "weight": "5%",
+      "description": "Assesses value for features and performance relative to cost.",
+      "definition": {
+        "Excellent (5)": "Excellent value",
+        "Good (4)": "Good balance",
+        "Fair (3)": "Fair for budget",
+        "Poor (2)": "Overpriced",
+        "Very Poor (1)": "Not worth it"
+      }
+    }
+  ]
+}
