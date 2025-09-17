@@ -8,9 +8,16 @@ _NAME_PATTERN = re.compile(r"^[A-Za-z0-9 _.-]+$")
 
 class CandidateCreate(BaseModel):
     """Payload for creating a candidate.
+
+    Optionally include a decisionKitId to immediately append the new
+    candidate to that decision kit's candidate list (at the last position).
     """
     name: str = Field(..., description="Display name (2-80 chars, limited charset)")
     description: Optional[str] = Field(None, description="Optional description")
+    decisionKitId: Optional[str] = Field(
+        None,
+        description="If provided, the candidate is associated with this decision kit as the last position",
+    )
 
     @field_validator("name")
     @classmethod

@@ -19,6 +19,11 @@ def list_candidates():
 
 @router.post("/", response_model=Candidate, status_code=201)
 def create_candidate(data: CandidateCreate):
+    """Create a candidate.
+
+    If decisionKitId is provided in the payload, the new candidate will be
+    appended to that decision kit's candidate list (position = last).
+    """
     try:
         return candidate_service.create_candidate(data)
     except ValueError as e:
