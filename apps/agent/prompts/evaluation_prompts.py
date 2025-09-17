@@ -60,16 +60,16 @@ INSTRUCTIONS:
 - **Output must be valid JSON only. No extra text, no comments, and no trailing commas.**
 
 OUTPUT JSON STRUCTURE:
-{
+{{
   "evaluation": [
-    {
+    {{
       "criterion_name": "string",
       "score": float,
       "reasoning": "string",
       "evidence": ["string1", "string2"]
-    }
+    }}
   ]
-}
+}}
 
 """
 

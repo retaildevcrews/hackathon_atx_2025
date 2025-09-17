@@ -64,15 +64,25 @@ class EvaluationService:
             # Import here to avoid dependency issues if LangChain not installed
             from langchain_openai import AzureChatOpenAI
 
+            # Debug logging
+            logger.info(f"Azure OpenAI API Key configured: {bool(self.settings.azure_openai_api_key)}")
+            logger.info(f"Azure OpenAI Endpoint: {self.settings.azure_openai_endpoint}")
+            logger.info(f"Azure OpenAI Deployment: {self.settings.azure_openai_deployment}")
+            logger.info(f"Azure OpenAI API Version: {self.settings.azure_openai_api_version}")
+
             if not all([
                 self.settings.azure_openai_api_key,
                 self.settings.azure_openai_endpoint,
                 self.settings.azure_openai_deployment
             ]):
                 logger.warning("Azure OpenAI not fully configured; using stub LLM")
+                logger.warning(f"Missing configs - API Key: {not self.settings.azure_openai_api_key}, "
+                             f"Endpoint: {not self.settings.azure_openai_endpoint}, "
+                             f"Deployment: {not self.settings.azure_openai_deployment}")
                 return None
 
-            return AzureChatOpenAI(
+            logger.info("Creating AzureChatOpenAI instance...")
+            llm = AzureChatOpenAI(
                 azure_deployment=self.settings.azure_openai_deployment,
                 api_key=self.settings.azure_openai_api_key,
                 azure_endpoint=self.settings.azure_openai_endpoint,
@@ -80,8 +90,13 @@ class EvaluationService:
                 temperature=0.1,
                 timeout=120
             )
-        except ImportError:
-            logger.warning("LangChain not available; using stub LLM")
+            logger.info("AzureChatOpenAI instance created successfully!")
+            return llm
+        except ImportError as e:
+            logger.warning(f"LangChain not available: {e}; using stub LLM")
+            return None
+        except Exception as e:
+            logger.error(f"Error creating LLM: {e}; using stub LLM")
             return None
 
     async def evaluate_document(
