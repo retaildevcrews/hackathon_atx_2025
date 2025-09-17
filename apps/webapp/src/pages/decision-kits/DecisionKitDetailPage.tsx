@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
 import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack } from '@mui/material';
+import AddIcon from '@mui/icons-material/PersonAdd';
+import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -26,6 +28,8 @@ export const DecisionKitDetailPage: React.FC = () => {
   if (process.env.NODE_ENV !== 'production') {
     console.debug('[DecisionKitDetail] kitId', kitId, 'needsRubricFetch', needsRubricFetch, 'rubricId', rubricId);
   }
+
+  const navigate = useNavigate();
 
   if (error) return <Alert severity="error" action={<Button onClick={retry}>Retry</Button>}>{error}</Alert>;
 
@@ -109,11 +113,14 @@ export const DecisionKitDetailPage: React.FC = () => {
         </Collapse>
       </Box>
       <Box>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>Candidates ({kit.candidates.length})</Typography>
-          <IconButton aria-label={candidatesOpen ? 'collapse candidates' : 'expand candidates'} size="small" onClick={() => setCandidatesOpen(o => !o)}>
-            {candidatesOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => navigate(`/decision-kits/${kit.id}/candidates/new`)}>Add Candidate</Button>
+            <IconButton aria-label={candidatesOpen ? 'collapse candidates' : 'expand candidates'} size="small" onClick={() => setCandidatesOpen(o => !o)}>
+              {candidatesOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Stack>
         </Box>
         <Divider sx={{ mb: 1 }} />
         <Collapse in={candidatesOpen} unmountOnExit timeout="auto">
