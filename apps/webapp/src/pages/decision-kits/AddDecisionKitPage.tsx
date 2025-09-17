@@ -3,6 +3,7 @@ import { Box, Typography, Snackbar, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { DecisionKitForm } from '../../components/decisionKits/DecisionKitForm';
 import { useCreateDecisionKit } from '../../hooks/useCreateDecisionKit';
+import { primeDecisionKitCache } from '../../api/decisionKits';
 import { useDecisionKits } from '../../hooks/useDecisionKits';
 import { useRubrics } from '../../hooks/useRubrics';
 
@@ -16,6 +17,13 @@ export const AddDecisionKitPage: React.FC = () => {
   setList: () => {/* intentionally unused; we rely on addKit */},
     onSuccess: (kit) => {
       addKit(kit);
+      // Prime detail cache minimally; rubric info fetched later if user opens detail.
+      primeDecisionKitCache({
+        id: kit.id,
+        name: kit.name,
+        description: kit.description,
+        candidates: [],
+      } as any);
       setToastOpen(true);
       navigate(`/decision-kits/${kit.id}`);
     }

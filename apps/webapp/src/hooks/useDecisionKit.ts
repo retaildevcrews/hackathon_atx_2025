@@ -22,5 +22,5 @@ export function useDecisionKit(id: string | null) {
   useEffect(() => { load(); }, [load, retryIndex]);
   const retry = () => setRetryIndex((i: number) => i + 1);
 
-  return { kit: data, loading, error, retry };
+  return { kit: data, loading, error, retry, reload: load };
 }

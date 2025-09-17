@@ -165,6 +165,7 @@ def seed():
                         decision_kit_id=kit.id,
                         candidate_id=c.id,
                         position=pos,
+                        name_normalized=c.name_normalized,
                     ))
                 db.commit()
             return
@@ -251,6 +252,7 @@ def seed():
                 decision_kit_id=kit.id,
                 candidate_id=cid,
                 position=pos,
+                name_normalized=cand.name_normalized if cand else None,
             ))
         db.commit()
     finally:

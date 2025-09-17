@@ -31,6 +31,7 @@ export async function fetchDecisionKit(id: string): Promise<DecisionKitDetail> {
 }
 
 export function primeDecisionKitCache(kit: DecisionKitDetail) { detailCache.set(kit.id, kit); }
+export function hasDecisionKitDetail(id: string) { return detailCache.has(id); }
 export function clearDecisionKitCache() { detailCache.clear(); }
 
 export function getDecisionKitsApiBase() { return API_BASE; }

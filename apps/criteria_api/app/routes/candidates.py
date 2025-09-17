@@ -4,6 +4,7 @@ from typing import List
 from app.models.candidate import (
     Candidate,
     CandidateCreate,
+    CandidateUpdate,
     CandidateMaterial,
     CandidateMaterialList,
 )
@@ -25,11 +26,7 @@ def list_candidates():
 
 @router.post("/", response_model=Candidate, status_code=201)
 def create_candidate(data: CandidateCreate):
-    """Create a candidate.
-
-    If decisionKitId is provided in the payload, the new candidate will be
-    appended to that decision kit's candidate list (position = last).
-    """
+    """Create a candidate (must supply decisionKitId)."""
     try:
         return candidate_service.create_candidate(data)
     except ValueError as e:
@@ -42,6 +39,19 @@ def get_candidate(candidate_id: str):
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return c
+
+
+@router.put("/{candidate_id}", response_model=Candidate)
+def update_candidate(candidate_id: str, data: CandidateUpdate):
+    try:
+        return candidate_service.update_candidate(candidate_id, data)
+    except ValueError as e:
+        msg = str(e)
+        if msg == "Candidate not found":
+            raise HTTPException(status_code=404, detail=msg)
+        if "already exists" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @router.post("/{candidate_id}/materials", response_model=CandidateMaterial, status_code=201)

@@ -21,3 +21,10 @@ export interface CreateCandidateInput {
   description?: string;
   decisionKitId: string; // required for association ordering server-side
 }
+
+export interface UpdateCandidateInput {
+  name: string;
+  description?: string;
+  // decisionKitId retained for parity with backend payload (future reassignment)
+  decisionKitId?: string;
+}

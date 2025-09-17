@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography, Alert, Button, Grid, Card, CardContent, CardActions, IconButton, LinearProgress, Stack } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadIcon from '@mui/icons-material/CloudUpload';
@@ -11,8 +11,9 @@ import { useUploadCandidateMaterial, useDeleteCandidateMaterial } from '../../ho
 
 interface DraftItem { id: string; file: File; status: 'pending' | 'uploading' | 'error'; error?: string; }
 
-export const EditCandidateMaterialsPage: React.FC = () => {
+export const EditCandidateMaterialsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { candidateId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { candidate, loading: candidateLoading, error: candidateError } = useCandidate(candidateId || null);
   const { materials, loading: materialsLoading, error: materialsError, refresh } = useCandidateMaterials(candidateId || null);
@@ -64,9 +65,21 @@ export const EditCandidateMaterialsPage: React.FC = () => {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/decision-kits/${candidate?.decisionKitId}`)} variant="text">Back to Decision Kit</Button>
-      </Stack>
+      {!embedded && (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => {
+              const stateKitId = (location.state as any)?.kitId;
+              const searchParams = new URLSearchParams(location.search);
+              const queryKitId = searchParams.get('kitId');
+              const targetKitId = stateKitId || queryKitId;
+              navigate(targetKitId ? `/decision-kits/${targetKitId}` : '/');
+            }}
+            variant="text"
+          >Back to Decision Kit</Button>
+        </Stack>
+      )}
       {candidateError && <Alert severity="error" sx={{ mb: 2 }}>{candidateError}</Alert>}
       {candidateLoading && <Typography>Loading candidate...</Typography>}
       {candidate && <Typography variant="h4" gutterBottom>Materials for: {candidate.name}</Typography>}

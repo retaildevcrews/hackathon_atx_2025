@@ -1,7 +1,8 @@
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from app.utils.db import SessionLocal
 from app.models.decision_kit import (
     DecisionKitCreate, DecisionKit, DecisionKitCandidateRef, DecisionKitUpdateCandidates
@@ -54,6 +55,14 @@ def _validate_candidate_ids(db: Session, ids: List[str]):
 
 
 def create_decision_kit(data: DecisionKitCreate) -> DecisionKit:
+    """Create a decision kit with optional initial candidates.
+
+    Ensures:
+      - Kit name uniqueness (global normalized)
+      - Candidate IDs are valid
+      - Per-kit candidate name uniqueness by populating association.name_normalized
+        and surfacing a friendly error on duplicate names.
+    """
     db: Session = SessionLocal()
     try:
         norm = _normalize_name(data.name)
@@ -65,6 +74,13 @@ def create_decision_kit(data: DecisionKitCreate) -> DecisionKit:
         if not rubric:
             raise ValueError("invalid rubric id")
         _validate_candidate_ids(db, data.candidateIds)
+
+        # Prefetch candidate normalized names for association rows
+        cand_map: Dict[str, str] = {}
+        if data.candidateIds:
+            rows = db.query(CandidateORM.id, CandidateORM.name_normalized).filter(CandidateORM.id.in_(data.candidateIds)).all()
+            cand_map = {r[0]: r[1] for r in rows}
+
         kit_id = str(uuid.uuid4())
         kit = DecisionKitORM(
             id=kit_id,
@@ -83,8 +99,15 @@ def create_decision_kit(data: DecisionKitCreate) -> DecisionKit:
                 decision_kit_id=kit.id,
                 candidate_id=cid,
                 position=pos,
+                name_normalized=cand_map.get(cid, ""),
             ))
-        db.commit(); db.refresh(kit)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            # Likely duplicate candidate name within kit
+            raise ValueError("duplicate candidate name in decision kit")
+        db.refresh(kit)
         kit = db.query(DecisionKitORM).options(
             joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
         ).filter(DecisionKitORM.id == kit_id).first()
@@ -172,7 +195,14 @@ def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optiona
         if kit.status != "OPEN":
             raise ValueError("kit not open")
         _validate_candidate_ids(db, data.candidateIds)
-        # remove existing
+
+        # Prefetch candidate normalized names
+        cand_map: Dict[str, str] = {}
+        if data.candidateIds:
+            rows = db.query(CandidateORM.id, CandidateORM.name_normalized).filter(CandidateORM.id.in_(data.candidateIds)).all()
+            cand_map = {r[0]: r[1] for r in rows}
+
+        # remove existing associations
         for assoc in list(kit.candidates_assoc):
             db.delete(assoc)
         db.flush()
@@ -182,9 +212,15 @@ def update_candidates(kit_id: str, data: DecisionKitUpdateCandidates) -> Optiona
                 decision_kit_id=kit.id,
                 candidate_id=cid,
                 position=pos,
+                name_normalized=cand_map.get(cid, ""),
             ))
         kit.updated_at = datetime.now(timezone.utc)
-        db.commit(); db.refresh(kit)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("duplicate candidate name in decision kit")
+        db.refresh(kit)
         kit = db.query(DecisionKitORM).options(joinedload(DecisionKitORM.candidates_assoc)).filter(DecisionKitORM.id == kit_id).first()
         return _serialize(kit)
     finally:
