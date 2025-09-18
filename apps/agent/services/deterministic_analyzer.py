@@ -15,8 +15,7 @@ from models.invoke import (
     CandidateRanking,
     StatisticalSummary,
     CriteriaAnalysis,
-    RankingStrategy,
-    ComparisonMode,
+    RankingStrategy
 )
 
 logger = logging.getLogger(__name__)
@@ -56,13 +55,13 @@ class DeterministicComparison:
         recommendation_rationale = self._generate_recommendation_rationale(rankings[0], criteria_analysis)
 
         return ComparisonSummary(
-            best_candidate=rankings[0],
+            best_document=rankings[0],
             rankings=rankings,
             statistical_summary=statistical_summary,
             criteria_analysis=criteria_analysis,
-            cross_candidate_insights=insights,
+            cross_document_insights=insights,
             recommendation_rationale=recommendation_rationale,
-            analysis_method=ComparisonMode.DETERMINISTIC,
+            analysis_method=ComparisonMode.DETERMINISTIC
         )
 
     def _calculate_statistical_summary(self, results: List[EvaluationResult]) -> StatisticalSummary:
@@ -79,7 +78,7 @@ class DeterministicComparison:
         if std_dev > 0:
             for result in results:
                 if abs(result.overall_score - mean_score) > std_dev:
-                    outliers.append(result.candidate_id or "unknown")
+                    outliers.append(result.document_id or "unknown")
 
         return StatisticalSummary(
             mean_score=mean_score,
@@ -100,7 +99,7 @@ class DeterministicComparison:
         for result in results:
             for criterion in result.criteria_evaluations:
                 criterion_name = criterion.criterion_name
-                document_id = result.candidate_id or "unknown"
+                document_id = result.document_id or "unknown"
 
                 if criterion_name not in criteria_scores:
                     criteria_scores[criterion_name] = []
@@ -131,11 +130,11 @@ class DeterministicComparison:
 
             analysis = CriteriaAnalysis(
                 criterion_name=criterion_name,
-                best_candidate_id=best_doc[0],
-                worst_candidate_id=worst_doc[0],
+                best_document_id=best_doc[0],
+                worst_document_id=worst_doc[0],
                 score_spread=score_spread,
                 average_score=average_score,
-                performance_trend=trend,
+                performance_trend=trend
             )
             analyses.append(analysis)
 
@@ -170,13 +169,13 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = CandidateRanking(
-                candidate_id=result.candidate_id or f"candidate_{rank}",
+            ranking = DocumentRanking(
+                document_id=result.document_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
                 key_weaknesses=weaknesses,
-                score_breakdown=score_breakdown,
+                score_breakdown=score_breakdown
             )
             rankings.append(ranking)
 
@@ -210,13 +209,13 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = CandidateRanking(
-                candidate_id=result.candidate_id or f"candidate_{rank}",
+            ranking = DocumentRanking(
+                document_id=result.document_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
                 key_weaknesses=weaknesses,
-                score_breakdown=score_breakdown,
+                score_breakdown=score_breakdown
             )
             rankings.append(ranking)
 
@@ -252,13 +251,13 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = CandidateRanking(
-                candidate_id=result.candidate_id or f"candidate_{rank}",
+            ranking = DocumentRanking(
+                document_id=result.document_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
                 key_weaknesses=weaknesses,
-                score_breakdown=score_breakdown,
+                score_breakdown=score_breakdown
             )
             rankings.append(ranking)
 
@@ -385,7 +384,7 @@ class DeterministicComparison:
             reasons.append(f"Best available option ({winner.overall_score:.1f}/5.0)")
 
         # Criteria leadership
-    winning_criteria = [c for c in criteria_analysis if c.best_candidate_id == winner.candidate_id]
+        winning_criteria = [c for c in criteria_analysis if c.best_document_id == winner.document_id]
         if winning_criteria:
             if len(winning_criteria) >= len(criteria_analysis) * 0.6:
                 reasons.append(f"Leading in {len(winning_criteria)}/{len(criteria_analysis)} criteria")

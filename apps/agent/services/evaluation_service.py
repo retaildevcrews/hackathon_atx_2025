@@ -270,44 +270,6 @@ class EvaluationService:
             logger.info(f"Fetching candidate data for {len(candidate_ids)} candidate(s): {candidate_ids}")
             candidates_data = await self.search_service.get_candidates_by_ids(candidate_ids)
 
-            # If using local search, support mapping criteria_api UUIDs to mock candidates by name
-            # This helps when UI sends real candidate IDs while local search has name-keyed mocks
-            try:
-                from services.local_search_service import LocalSearchService  # type: ignore
-                using_local = isinstance(self.search_service, LocalSearchService)
-            except Exception:
-                using_local = False
-
-            if using_local:
-                # For any missing IDs, fetch their display names from criteria_api and try name-based lookup
-                missing = [cid for cid in candidate_ids if cid not in candidates_data]
-                if missing:
-                    logger.info(f"Local search fallback: resolving {len(missing)} missing candidates by name via criteria_api")
-                    resolved = {}
-                    async with httpx.AsyncClient(timeout=10) as client:
-                        for cid in missing:
-                            try:
-                                resp = await client.get(f"{self.criteria_api_url}/candidates/{cid}")
-                                if resp.status_code == 200:
-                                    meta = resp.json()
-                                    display_name = meta.get("name") or meta.get("nameNormalized")
-                                    if display_name:
-                                        # Find in local mocks by name
-                                        local = self.search_service.find_candidate_by_name(display_name)  # type: ignore[attr-defined]
-                                        if local:
-                                            resolved[cid] = local
-                                            logger.info(f"Resolved candidate '{cid}' to local mock by name '{display_name}'")
-                                        else:
-                                            logger.warning(f"No local mock found for candidate name '{display_name}' (id {cid})")
-                                    else:
-                                        logger.warning(f"Candidate metadata missing name for id {cid}")
-                                else:
-                                    logger.warning(f"Failed to fetch candidate meta {cid}: status {resp.status_code}")
-                            except Exception as exc:  # noqa: BLE001
-                                logger.warning(f"Error resolving candidate {cid} by name: {exc}")
-                    if resolved:
-                        candidates_data.update(resolved)
-
             # Check for missing candidates
             missing_candidates = set(candidate_ids) - set(candidates_data.keys())
             if missing_candidates:
@@ -323,7 +285,7 @@ class EvaluationService:
                 result = await self.evaluate_document(
                     document_text=candidate_data["content"],
                     rubric_name=rubric_id,  # Using rubric_id as rubric_name
-                    candidate_id=candidate_id,
+                    document_id=candidate_id,
                     max_chunks=max_chunks
                 )
 
@@ -332,9 +294,7 @@ class EvaluationService:
                     result["agent_metadata"] = {}
                 result["agent_metadata"]["workflow"] = "id_based"
                 result["agent_metadata"]["rubric_id"] = rubric_id
-                result["agent_metadata"]["candidate_source"] = (
-                    "local_search" if getattr(self.search_service, "enabled", False) and self.settings.use_local_search else "azure_search"
-                )
+                result["agent_metadata"]["candidate_source"] = "azure_search"
 
                 # Save to criteria_api and return evaluation ID
                 evaluation_id = await self.save_evaluation_to_criteria_api(
@@ -361,7 +321,7 @@ class EvaluationService:
                     candidate_inputs.append(CandidateInput(
                         candidate_id=candidate_id,
                         candidate_text=candidate_data["content"],
-                        metadata=candidate_data.get("metadata", {}),
+                        metadata=candidate_data.get("metadata", {})
                     ))
 
                 result = await self.evaluate_document_batch(
@@ -377,9 +337,7 @@ class EvaluationService:
                     result["batch_metadata"] = {}
                 result["batch_metadata"]["workflow"] = "id_based"
                 result["batch_metadata"]["rubric_id"] = rubric_id
-                result["batch_metadata"]["candidate_source"] = (
-                    "local_search" if getattr(self.search_service, "enabled", False) and self.settings.use_local_search else "azure_search"
-                )
+                result["batch_metadata"]["candidate_source"] = "azure_search"
 
                 # Save to criteria_api and return evaluation ID
                 evaluation_id = await self.save_evaluation_to_criteria_api(
@@ -403,7 +361,7 @@ class EvaluationService:
         self,
         document_text: str,
         rubric_name: str,
-        candidate_id: Optional[str] = None,
+        document_id: Optional[str] = None,
         max_chunks: int = 10
     ) -> Dict[str, Any]:
         """Evaluate a document against a rubric.
@@ -428,9 +386,69 @@ class EvaluationService:
                     "summary": f"Evaluation failed: Rubric '{rubric_name}' not found"
                 }
 
+            # Check if consensus evaluation is enabled
+            if self.settings.use_consensus_evaluation:
+                logger.info(f"Using CONSENSUS EVALUATION for document {document_id}")
+                return await self._evaluate_with_consensus(
+                    document_text, rubric_data, document_id or "unknown"
+                )
+            else:
+                logger.info(f"Using STANDARD EVALUATION for document {document_id}")
+                return await self._evaluate_standard(
+                    document_text, rubric_data, document_id, max_chunks
+                )
+
+        except Exception as e:
+            logger.error(f"Error during document evaluation: {e}")
+            return {
+                "error": str(e),
+                "overall_score": 0.0,
+                "criteria_evaluations": [],
+                "summary": f"Evaluation failed due to error: {str(e)}"
+            }
+
+    async def _evaluate_with_consensus(
+        self,
+        document_text: str,
+        rubric_data: Dict[str, Any],
+        document_id: str
+    ) -> Dict[str, Any]:
+        """Evaluate using multi-agent consensus process."""
+        from services.consensus_evaluation import ConsensusEvaluationService
+
+        consensus_service = ConsensusEvaluationService(llm=self.llm)
+
+        result = await consensus_service.evaluate_with_consensus(
+            candidate_content=document_text,
+            rubric_data=rubric_data,
+            candidate_id=document_id,
+            max_rounds=2
+        )
+
+        # Add standard metadata
+        result["candidate_id"] = document_id
+        result["rubric_name"] = rubric_data.get("rubric_name", "Unknown")
+        if "agent_metadata" not in result:
+            result["agent_metadata"] = {}
+        result["agent_metadata"]["evaluation_model"] = "multi-agent-consensus"
+        result["agent_metadata"]["evaluation_type"] = "debate_style"
+
+        return result
+
+    async def _evaluate_standard(
+        self,
+        document_text: str,
+        rubric_data: Dict[str, Any],
+        document_id: Optional[str],
+        max_chunks: int
+    ) -> Dict[str, Any]:
+        """Evaluate using standard single-agent process."""
+        try:
+            rubric_name = rubric_data.get("rubric_name", "Unknown")
+
             # Step 2: Retrieve document chunks
             document_chunks = await self._retrieve_chunks(
-                document_text, rubric_data, candidate_id, max_chunks
+                document_text, rubric_data, document_id, max_chunks
             )
 
             # Step 3: Evaluate all criteria at once
@@ -449,7 +467,7 @@ class EvaluationService:
             # Build result
             result = EvaluationResult(
                 overall_score=overall_score,
-                candidate_id=candidate_id,
+                document_id=document_id,
                 rubric_name=rubric_name,
                 criteria_evaluations=criteria_evaluations,
                 summary=summary_data["summary"],
@@ -458,19 +476,19 @@ class EvaluationService:
                 agent_metadata={
                     "evaluation_model": "langchain-azure-openai",
                     "chunks_analyzed": str(len(document_chunks)),  # Convert to string
-                    "workflow": "batch_evaluation"
+                    "workflow": "standard_evaluation"
                 }
             )
 
             return result.dict()
 
         except Exception as e:
-            logger.error(f"Error during document evaluation: {e}")
+            logger.error(f"Error during standard evaluation: {e}")
             return {
                 "error": str(e),
                 "overall_score": 0.0,
                 "criteria_evaluations": [],
-                "summary": f"Evaluation failed: {e}"
+                "summary": f"Standard evaluation failed: {e}"
             }
 
     async def evaluate_document_batch(
@@ -494,7 +512,7 @@ class EvaluationService:
             Batch evaluation results dictionary
         """
         try:
-            logger.info(f"Starting batch evaluation of {len(documents)} candidates with rubric '{rubric_name}'")
+            logger.info(f"Starting batch evaluation of {len(documents)} documents with rubric '{rubric_name}'")
 
             # Step 1: Validate inputs
             if not documents:
@@ -510,7 +528,7 @@ class EvaluationService:
                 }
 
             # Step 2: Evaluate each document in parallel
-            logger.info("Evaluating individual candidates in parallel...")
+            logger.info("Evaluating individual documents in parallel...")
             individual_results = await self._evaluate_documents_parallel(
                 documents, rubric_name, max_chunks
             )
@@ -546,14 +564,14 @@ class EvaluationService:
             # Step 4: Build batch result
             batch_result = BatchEvaluationResult(
                 rubric_name=rubric_name,
-                total_candidates=len(documents),
+                total_documents=len(documents),
                 individual_results=evaluation_results,
                 comparison_summary=comparison_summary,
                 batch_metadata={
                     "comparison_mode": comparison_mode.value,
                     "ranking_strategy": ranking_strategy.value,
-                    "candidates_processed": str(len(evaluation_results)),
-                    "candidates_failed": str(len(failed_evaluations)) if failed_evaluations else "0",
+                    "documents_processed": str(len(evaluation_results)),
+                    "documents_failed": str(len(failed_evaluations)) if failed_evaluations else "0",
                     "evaluation_model": "langchain-azure-openai" if self.llm else "stub"
                 }
             )
@@ -576,29 +594,29 @@ class EvaluationService:
     ) -> List[Dict[str, Any]]:
         """Evaluate multiple documents in parallel for better performance."""
 
-        # Create evaluation tasks for all candidates
+        # Create evaluation tasks for all documents
         tasks = []
         for doc in documents:
             task = self.evaluate_document(
                 document_text=doc.document_text,
                 rubric_name=rubric_name,
-                candidate_id=doc.candidate_id,
+                document_id=doc.document_id,
                 max_chunks=max_chunks
             )
             tasks.append(task)
 
         # Execute all evaluations in parallel
-    logger.info(f"Executing {len(tasks)} candidate evaluations in parallel...")
+        logger.info(f"Executing {len(tasks)} document evaluations in parallel...")
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Handle any exceptions
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Candidate {documents[i].candidate_id} evaluation failed: {result}")
+                logger.error(f"Document {documents[i].document_id} evaluation failed: {result}")
                 processed_results.append({
                     "error": str(result),
-                    "candidate_id": documents[i].candidate_id
+                    "document_id": documents[i].document_id
                 })
             else:
                 processed_results.append(result)
