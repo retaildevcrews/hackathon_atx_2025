@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
@@ -37,7 +37,35 @@ interface CandidateTileProps {
 }
 
 const CandidateTile: React.FC<CandidateTileProps> = ({ kitId, candidate, rubricId, onEvaluated, evaluating, setEvaluating, navigate, showToast }) => {
-  const { latest, loading, error, retry } = useCandidateEvaluations(candidate.id);
+  const { latest, loading, error, retry, refresh } = useCandidateEvaluations(candidate.id);
+  const pollingRef = useRef<number | null>(null);
+  const pollStartTimeRef = useRef<number | null>(null);
+
+  // Generic polling function to look for first evaluation after an eval trigger
+  const beginPollingForResult = useCallback(() => {
+    // Avoid duplicate polling loops
+    if (pollingRef.current) return;
+    pollStartTimeRef.current = Date.now();
+    const POLL_INTERVAL = 4000; // 4s
+    const TIMEOUT_MS = 60_000; // 1 min
+    const tick = async () => {
+      try {
+        await refresh();
+      } catch {
+        // ignore errors during polling, will be surfaced by hook state
+      }
+      const found = !!latest;
+      const timedOut = pollStartTimeRef.current != null && (Date.now() - pollStartTimeRef.current) > TIMEOUT_MS;
+      if (found || timedOut) {
+        if (pollingRef.current) window.clearTimeout(pollingRef.current);
+        pollingRef.current = null;
+        pollStartTimeRef.current = null;
+        return;
+      }
+      pollingRef.current = window.setTimeout(tick, POLL_INTERVAL);
+    };
+    pollingRef.current = window.setTimeout(tick, POLL_INTERVAL);
+  }, [latest, refresh]);
 
   const handleEvaluate = useCallback(async () => {
     if (!rubricId) return;
@@ -48,6 +76,8 @@ const CandidateTile: React.FC<CandidateTileProps> = ({ kitId, candidate, rubricI
         showToast(resp.evaluation_id ? `Evaluation started: ${resp.evaluation_id}` : 'Evaluation complete', 'success');
         invalidateCandidateEvaluations(candidate.id);
         onEvaluated(candidate.id);
+        // Begin polling for appearance of evaluation if async
+        beginPollingForResult();
       } else {
         showToast(resp.error || 'Evaluation failed', 'error');
       }
@@ -56,7 +86,24 @@ const CandidateTile: React.FC<CandidateTileProps> = ({ kitId, candidate, rubricI
     } finally {
       setEvaluating(null);
     }
-  }, [rubricId, candidate.id, onEvaluated, setEvaluating, showToast]);
+  }, [rubricId, candidate.id, onEvaluated, setEvaluating, showToast, beginPollingForResult]);
+
+  // Passive polling for candidates that have no evaluations yet (lightweight, slower cadence)
+  useEffect(() => {
+    if (latest || loading) return; // only when we definitively have none yet and not currently loading
+    const PASSIVE_INTERVAL = 15000; // 15s
+    const id = window.setTimeout(() => {
+      refresh().catch(() => {/* swallow */});
+    }, PASSIVE_INTERVAL);
+    return () => window.clearTimeout(id);
+  }, [latest, loading, refresh]);
+
+  // Cleanup any active polling loop on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) window.clearTimeout(pollingRef.current);
+    };
+  }, []);
 
   const scoreLabel = latest ? `${latest.overall_score.toFixed(1)}` : null;
 
