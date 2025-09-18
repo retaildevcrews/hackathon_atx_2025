@@ -1,81 +1,89 @@
-# Implementation Plan — Generic Blob-backed File Ingestion Service
+# Implementation Plan — Generic Blob-backed File Ingestion Service (Updated Reality Snapshot)
 
 This plan enumerates concrete, verifiable steps to implement the generic Azure Function upload service and integrate the first consumer (candidate materials) at a minimal scope (no feature flags, minimal observability).
 
 ---
-## Pre-flight
+## Pre-flight (Actual Status)
 
-- [ ] Confirm Python runtime version for Function (target 3.11) and that repo tooling supports it (adjust if constraints found).
-- [ ] Identify and list external dependencies (azure-functions, azure-identity, azure-storage-blob, python-multipart or starlette/form parsing if needed). Add to dedicated `requirements.txt` for the Function project (not global).
-- [ ] Verify no existing IaC conflicts (none present) – choose path for initial manual deployment vs future Bicep (document only, code later).
-- [ ] Define environment variables & contract (STORAGE_ACCOUNT_URL, BLOB_CONTAINER, MAX_BYTES, INTERNAL_UPLOAD_KEY_SHA256, ALLOWED_CONTEXT_TYPES, LOG_LEVEL) – document defaults.
-- [ ] Decide hash algorithm (SHA256) and chunk size (256KB) – record constants.
-- [ ] Confirm candidate materials domain model changes required (new columns or re-use existing fields). Capture migration delta (if needed) but not executed in this iteration per narrowed scope.
-- [ ] Security secret handling approach: store raw secret only in API; hash pre-provisioned into Function config.
+- [x] Python runtime version selected: 3.11 (function code written accordingly).
+- [x] Dependencies captured in `apps/functions/requirements.txt` (azure-functions, azure-identity, azure-storage-blob, python-multipart, etc.).
+- [x] IaC path chosen and implemented (Bicep templates instead of manual only; includes Function, Web App, Managed Identity, App Insights, role assignment two-pass pattern).
+- [x] Environment variables defined: `STORAGE_ACCOUNT_URL`, `BLOB_CONTAINER`, `MAX_BYTES`, `INTERNAL_UPLOAD_KEY_SHA256`, `ALLOWED_CONTEXT_TYPES`, `LOG_LEVEL`, plus added `DISABLE_INTERNAL_UPLOAD_AUTH` (demo bypass flag) post initial design.
+- [x] Hash algorithm SHA256; stream chunk size 256KB implemented.
+- [~] Candidate materials integration deferred (no model changes performed; integration stub not yet implemented) – tracked as future enhancement.
+- [x] Secret handling via SHA256 of raw secret (pre-hashed value configured). Demo bypass flag added later for frictionless local usage.
 
-## Implementation
+## Implementation (Planned vs Done)
 
-- [ ] Create function project directory scaffold (no code yet in plan execution): `apps/generic_upload_function/` with placeholders: `host.json`, `local.settings.json.example`, `requirements.txt`.
-- [ ] Implement HTTP trigger function `upload/__init__.py`:
-	- Parse multipart form fields: contextType, contextId, file.
-	- Validate: non-empty, allowed contextType, size streaming check, <= MAX_BYTES.
-	- Stream file -> compute sha256, accumulate size, abort if limit exceeded.
-	- Generate fileId (UUID4), sanitize filename, construct blob path.
-	- Obtain blob client (using DefaultAzureCredential / Managed Identity in cloud; for local dev fall back to connection string if present).
-	- Upload stream (single call since size ≤ 10MB) or staged blocks if size threshold exceeded for reliability.
-	- Return JSON metadata.
-- [ ] Add centralized error handling mapping to 4xx codes (ValidationError, AuthError) and 500 fallback.
-- [ ] Implement logging helper (structured dict -> json string) using `logging.getLogger(__name__)`.
-- [ ] Add configuration loader (pull env vars, parse numeric limit, split ALLOWED_CONTEXT_TYPES).
-- [ ] Add simple filename sanitizer utility (strip path separators, control chars, collapse whitespace, enforce length limit).
-- [ ] Implement shared secret verification (constant-time compare of sha256 hex digest).
-- [ ] Add minimal retry (optional) for transient blob upload error (e.g., 3 attempts with exponential backoff) – log on retry.
-- [ ] In API layer (candidate materials service): add HTTP client wrapper using `requests` or `httpx` (choose existing dependency style in repo – if none, prefer `httpx` for timeout support) to call Function endpoint. (Note: actual code may be deferred if project owner wants; include stub plan.)
-- [ ] Replace pseudo path generation in candidate service with call to uploader client (if integration included in this iteration) OR add TODO marker referencing implementation plan step.
+Legend: [x] done, [ ] not started, [~] partial/deferred
 
-## Validation
+- [x] Scaffold created under `apps/functions/` (includes `requirements.txt`, Dockerfile; `host.json` implicit via Functions tooling to be added if required later).
+- [x] HTTP trigger function implemented (`upload/function_app.py` rather than `__init__.py` for clarity).
+  - [x] Multipart parsing (manual boundary parsing kept minimal; using python-multipart library).
+  - [x] Validation (contextType allow-list, size enforcement during streaming, required fields).
+  - [x] Streaming SHA256 + size accumulation (abort on > MAX_BYTES).
+  - [x] UUID filename prefix + sanitizer.
+  - [x] Blob client via `DefaultAzureCredential` (expect MI in Azure; local dev uses Azurite / connection string path if set).
+  - [x] Single-shot upload (size ≤ 10MB) – no block staging needed.
+  - [x] JSON response (blobPath, sha256, size).
+- [x] Centralized error mapping (custom exceptions -> appropriate status codes) implemented in function handler logic.
+- [x] Logging helper implemented (`core/logging_utils.py`).
+- [x] Config loader (`core/config.py`).
+- [x] Filename sanitizer (`core/sanitizer.py`).
+- [x] Shared secret verification (`core/secret.py`) with later addition of bypass flag.
+- [ ] Retry logic for transient blob errors (not implemented; considered low priority for <=10MB uploads; future enhancement candidate).
+- [ ] Candidate service HTTP client integration (deferred; not in current scope). No TODO yet inserted; recommend adding backlog item.
 
-- [ ] Unit tests (Function):
-	- Happy path small file (text/plain) returns 201, includes sha256.
-	- Oversize file (limit+1 byte) -> 413.
-	- Missing contextType -> 400.
-	- Unsupported contextType -> 400.
-	- Missing file part -> 400.
-	- Wrong secret -> 401.
-	- Boundary at EXACT limit (10MB) -> success.
-- [ ] Unit tests (utilities): filename sanitizer, hash streaming function (deterministic), secret verification.
-- [ ] Contract tests (API wrapper -> mocked function response) verifying translation of errors and metadata persistence call arguments.
-- [ ] (Optional) Integration test with Azurite (if added) flagged `@skip` unless env `USE_AZURITE=1`.
-- [ ] Lint/type check (if mypy/ruff/flake8 standards present) – add ignore entries only if necessary.
+Additional (not in original Implementation list):
+- [x] Auth bypass flag (`DISABLE_INTERNAL_UPLOAD_AUTH`) for demo scenarios.
+- [x] Containerization via Dockerfile and usage docs.
+- [x] Bicep IaC for Function + Web App + Managed Identity + App Insights + two-pass role assignment pattern.
 
-## Samples and documentation
+## Validation (Current State)
 
-- [ ] Provide example HTTP request (curl) in `docs/azure-resources.md` update section “Generic Upload Function”.
-- [ ] Add a sample JSON response snippet to same doc.
-- [ ] Add quickstart steps (local run with func tools + Azurite or connection string) to doc.
-- [ ] (Optional) Add minimal React component usage outline (NOT implemented) referencing existing API route as adapter.
+- Utilities tests present: sanitizer, secret (added bypass test), streaming logic.
+- Endpoint-level HTTP tests (status codes, boundary conditions) NOT yet implemented (gap vs plan).
+- No contract tests (client integration deferred).
+- No explicit Azurite integration test harness yet (could be added with pytest marker later).
+- Lint/type checks not configured in this folder (future improvement if repo adopts ruff/mypy baseline).
 
-## Rollout
+Gaps:
+- Need tests for: oversize file rejection, boundary at limit, missing/invalid fields, wrong secret (partially covered by `test_secret.py` but not full request path).
+- Suggest adding minimal FastPath tests using Functions test host or refactoring core logic into a pure function to unit test validations.
 
-- [ ] Document manual deployment steps (az cli: create storage account, enable identity, assign role, set app settings) – no feature flag.
-- [ ] Record required secret hashing command (e.g., `echo -n $SECRET | openssl dgst -sha256`).
-- [ ] Update `docs/azure-resources.md` with environment variable table.
-- [ ] Add note about future enhancements (direct browser path, dedup) and that telemetry/metrics intentionally deferred.
+## Samples and Documentation (Status)
+
+- [x] Example curl request added in function `README.md`.
+- [ ] Not yet added to `docs/azure-resources.md` (only local README contains details) — action needed for central docs parity.
+- [x] Quickstart (local run, Docker, compose) documented.
+- [ ] JSON response example snippet absent (could add to docs for clarity).
+- [ ] React component usage outline not added (optional, still deferred).
+
+## Rollout (Actual)
+
+- [x] IaC Bicep provides automated deployment path (supersedes manual-only approach). Two-pass role assignment documented in infra README.
+- [ ] Central docs (`docs/azure-resources.md`) still need environment variable table sync (currently only in function README + infra README for partial set).
+- [ ] Secret hashing command example not yet documented (should add for clarity; e.g. PowerShell & bash variants).
+- [x] Future enhancements noted in README (scanning, metadata, SAS evolution).
+- [x] Telemetry intentionally minimal; App Insights resource provisioned but not deeply instrumented.
 
 ---
-## Detailed Task Breakdown & Ordering
-1. Pre-flight dependency + env var documentation.
-2. Create function scaffold files (empty placeholders).
-3. Implement config loader & constants.
-4. Implement sanitizer + hashing stream utility.
-5. Implement auth (secret verification) module.
-6. Implement upload function (parsing + validation + streaming + blob write + response).
-7. Add logging & error mapping.
-8. Write unit tests for utilities & core function logic (mock blob client).
-9. Implement API uploader client stub & adjust candidate service (if in scope now).
-10. Add documentation updates & sample request.
-11. Add integration (optional Azurite) test harness.
-12. Final review & checklist completion.
+## Revised Task Breakdown (Reflecting Reality & Next Steps)
+Completed:
+1. Dependencies & env vars documented (local README).
+2. Scaffold + config loader + utilities (sanitizer, streaming, secret verification).
+3. Upload function core logic + logging + error handling.
+4. Basic tests (utilities) including bypass secret scenario.
+5. Containerization & IaC (Bicep) with two-pass identity assignment.
+6. Standalone Python upload client (`apps/upload_client`) with tests covering status mapping.
+
+Outstanding / Recommended Next:
+7. Add end-to-end request validation tests (multipart cases, limits, auth failure).
+8. Sync central docs (`docs/azure-resources.md`) with env var table + response example + client usage snippet.
+9. Add secret hashing command examples (bash, PowerShell).
+10. Optional retry wrapper for blob upload (exponential backoff) if error telemetry indicates need.
+11. Integrate upload client into candidate service (replace placeholder logic) & add contract tests.
+12. Optional Azurite integration tests toggled by env marker.
 
 ## Risks & Mitigations
 - Multipart parsing memory spikes: ensure chunked read + size counter; reject early.
@@ -84,12 +92,13 @@ This plan enumerates concrete, verifiable steps to implement the generic Azure F
 - Blob path collisions: use UUID fileId prefix; extremely low risk.
 - Local vs deployed credential differences: fallback logic clear & documented; explicit warning log if using development connection string instead of managed identity.
 
-## Acceptance Criteria Mapping
-Goal (generic endpoint) -> Steps 2–6.
-Hash & metadata integrity -> Steps 4,6 tests in Validation.
-10MB streaming limit -> Steps 4,6 with tests oversize/boundary.
-Minimal logging -> Step 7.
-First consumer integration path -> Step 9.
+## Acceptance Criteria Mapping (Updated)
+Goal (generic endpoint) -> Achieved (function implemented, returns metadata).
+Hash & metadata integrity -> Implemented (sha256 computed; not yet covered by full request test).
+10MB streaming limit -> Enforced in code; boundary test pending.
+Minimal logging -> Implemented.
+First consumer integration path -> Deferred (no client stub yet).
+Demo simplicity (new) -> Achieved via bypass flag, clearly warned.
 
 ---
-Completion of this plan yields: Function code + tests + docs updates + API integration stub ready for expansion.
+Current completion yields: Core function code + utility tests + Docker + IaC + demo auth bypass. Remaining: broader tests, central documentation sync, integration client, optional reliability enhancements.

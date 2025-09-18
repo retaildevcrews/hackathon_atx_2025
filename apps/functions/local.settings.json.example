@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "STORAGE_ACCOUNT_URL": "https://<account>.blob.core.windows.net",
+    "BLOB_CONTAINER": "uploads",
+    "MAX_BYTES": "10485760",
+    "INTERNAL_UPLOAD_KEY_SHA256": "<hex-sha256-of-shared-secret>",
+    "ALLOWED_CONTEXT_TYPES": "candidate,decision-kit",
+    "LOG_LEVEL": "INFO"
+  }
+}

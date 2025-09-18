@@ -1,0 +1,5 @@
+azure-functions
+azure-identity
+azure-storage-blob
+python-dotenv
+pytest

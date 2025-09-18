@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+local.settings.json
+tests/
+*.log
+README.md
+*.md
+*.swp
+Dockerfile

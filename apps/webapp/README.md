@@ -98,6 +98,10 @@ This React app allows users to manage document analysis criteria and build rubri
 - `/rubrics/:id` — Rubric detail view showing all criteria
 - `/rubrics/:id/edit` — Edit rubric form
 
+### Utility / Testing
+
+- `/upload-test` — Standalone Generic Upload Function tester (manual file uploads to the backend function). Provide the function base URL via `VITE_UPLOAD_ENDPOINT` or fill the form field directly. If the function runs with `DISABLE_INTERNAL_UPLOAD_AUTH=true`, you can omit the shared secret.
+
 ## Project Structure
 
 - `src/components/` — UI components for criteria and rubrics
@@ -105,6 +109,7 @@ This React app allows users to manage document analysis criteria and build rubri
 - `src/pages/` — Route-level components
   - `src/pages/decision-kits/` — Decision kit pages
   - `src/pages/rubrics/` — Rubric management pages (NEW)
+   - `src/pages/upload/UploadTesterPage.tsx` — Manual file upload tester
   - `src/pages/layout/` — App layout with navigation
 - `src/hooks/` — Custom hooks for API integration
 - `src/types/` — TypeScript interfaces

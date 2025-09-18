@@ -13,6 +13,7 @@ const AddEditRubricPage = lazy(() => import('./rubrics/AddEditRubricPage').then(
 const CreateCandidatePage = lazy(() => import('./candidates/CreateCandidatePage').then(m => ({ default: m.CreateCandidatePage })));
 const EditCandidateMaterialsPage = lazy(() => import('./candidates/EditCandidateMaterialsPage').then(m => ({ default: m.EditCandidateMaterialsPage })));
 const EditCandidatePage = lazy(() => import('./candidates/EditCandidatePage').then(m => ({ default: m.EditCandidatePage })));
+const UploadTesterPage = lazy(() => import('./upload/UploadTesterPage').then(m => ({ default: m.UploadTesterPage })));
 
 export const App: React.FC = () => {
   const enableDecisionKits =
@@ -45,6 +46,9 @@ export const App: React.FC = () => {
             <Route path="rubrics/new" element={<AddEditRubricPage />} />
             <Route path="rubrics/:id" element={<RubricDetailPage />} />
             <Route path="rubrics/:id/edit" element={<AddEditRubricPage />} />
+
+            {/* Utility / Test Routes */}
+            <Route path="upload-test" element={<UploadTesterPage />} />
 
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/" replace />} />
