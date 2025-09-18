@@ -87,11 +87,11 @@ class AzureSearchService:
             logger.exception("Azure Search query failed", exc_info=exc)
             return []
 
-    async def get_document_by_id(self, document_id: str) -> dict[str, Any] | None:
+    async def get_document_by_id(self, candidate_id: str) -> dict[str, Any] | None:
         """Retrieve a specific document by its ID from Azure Search.
 
         Args:
-            document_id: The unique identifier of the document to retrieve
+            candidate_id: The unique identifier of the document to retrieve
 
         Returns:
             Document data with 'id', 'content', and other fields, or None if not found
@@ -99,18 +99,18 @@ class AzureSearchService:
         if not self.enabled:
             logger.warning("Azure Search not configured; returning stub document")
             return {
-                "id": document_id,
-                "content": f"Stub document content for ID: {document_id}. This is sample text for testing purposes.",
-                "title": f"Stub Title for {document_id}",
-                "name": f"Stub Name for {document_id}",
-                "candidate_id": f"stub-candidate-{document_id}",
+                "id": candidate_id,
+                "content": f"Stub document content for ID: {candidate_id}. This is sample text for testing purposes.",
+                "title": f"Stub Title for {candidate_id}",
+                "name": f"Stub Name for {candidate_id}",
+                "candidate_id": f"stub-candidate-{candidate_id}",
                 "decision_kit_id": "stub-decision-kit",
             }
 
         # Safe guard: endpoint should be a string if enabled, but be defensive.
         endpoint_raw = self.settings.azure_search_endpoint or ""
         endpoint = endpoint_raw.rstrip("/")
-        url = f"{endpoint}/indexes/{self.settings.azure_search_index}/docs('{document_id}')?api-version=2023-11-01&$select=id,title,name,candidate_id,decision_kit_id,content"
+        url = f"{endpoint}/indexes/{self.settings.azure_search_index}/docs('{candidate_id}')?api-version=2023-11-01&$select=id,title,name,candidate_id,decision_kit_id,content"
         headers = {
             "Content-Type": "application/json",
             "api-key": self.settings.azure_search_api_key or "",
@@ -123,7 +123,7 @@ class AzureSearchService:
                 if resp.status_code == 200:
                     doc = resp.json()
                     return {
-                        "id": doc.get("id", document_id),
+                        "id": doc.get("id", candidate_id),
                         "content": doc.get("content", ""),
                         "title": doc.get("title", ""),
                         "name": doc.get("name", ""),
@@ -133,14 +133,14 @@ class AzureSearchService:
 
                 elif resp.status_code == 404:
                     # Direct lookup failed, try searching by candidate_id field
-                    logger.info(f"Direct lookup failed for '{document_id}', trying search by candidate_id field")
-                    return await self._search_by_candidate_id(document_id)
+                    logger.info(f"Direct lookup failed for '{candidate_id}', trying search by candidate_id field")
+                    return await self._search_by_candidate_id(candidate_id)
 
                 else:
                     resp.raise_for_status()
 
         except Exception as exc:  # noqa: BLE001
-            logger.exception(f"Failed to retrieve document '{document_id}' from Azure Search", exc_info=exc)
+            logger.exception(f"Failed to retrieve document '{candidate_id}' from Azure Search", exc_info=exc)
             return None
 
     async def _search_by_candidate_id(self, candidate_id: str) -> dict[str, Any] | None:
@@ -196,18 +196,18 @@ class AzureSearchService:
             logger.exception(f"Failed to search by candidate_id '{candidate_id}'", exc_info=exc)
             return None
 
-    async def get_documents_by_ids(self, document_ids: list[str]) -> dict[str, dict[str, Any]]:
+    async def get_documents_by_ids(self, candidate_ids: list[str]) -> dict[str, dict[str, Any]]:
         """Retrieve multiple documents by their IDs from Azure Search.
 
         Args:
-            document_ids: List of document IDs to retrieve
+            candidate_ids: List of document IDs to retrieve
 
         Returns:
-            Dictionary mapping document_id -> document_data for successfully retrieved documents
+            Dictionary mapping candidate_id -> document_data for successfully retrieved documents
         """
         results = {}
 
-        for doc_id in document_ids:
+        for doc_id in candidate_ids:
             doc = await self.get_document_by_id(doc_id)
             if doc:
                 results[doc_id] = doc

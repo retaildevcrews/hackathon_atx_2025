@@ -39,23 +39,23 @@ class LocalSearchService:
 
         return result
 
-    async def get_document_by_id(self, document_id: str) -> Optional[Dict[str, Any]]:
+    async def get_document_by_id(self, candidate_id: str) -> Optional[Dict[str, Any]]:
         """Get a single document/candidate by ID.
 
         Args:
-            document_id: The candidate ID to retrieve
+            candidate_id: The candidate ID to retrieve
 
         Returns:
             Candidate data or None if not found
         """
-        logger.info(f"LOCAL SEARCH: Fetching single candidate: {document_id}")
+        logger.info(f"LOCAL SEARCH: Fetching single candidate: {candidate_id}")
 
-        if document_id in self.mock_candidates:
-            candidate = self.mock_candidates[document_id]
-            logger.info(f"LOCAL SEARCH: Found candidate {document_id}")
+        if candidate_id in self.mock_candidates:
+            candidate = self.mock_candidates[candidate_id]
+            logger.info(f"LOCAL SEARCH: Found candidate {candidate_id}")
             return candidate
         else:
-            logger.warning(f"LOCAL SEARCH: Candidate {document_id} not found in mock data")
+            logger.warning(f"LOCAL SEARCH: Candidate {candidate_id} not found in mock data")
             return None
 
     def add_test_candidate(self, candidate_id: str, candidate_data: Dict[str, Any]) -> None:

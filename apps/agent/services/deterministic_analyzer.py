@@ -78,7 +78,7 @@ class DeterministicComparison:
         if std_dev > 0:
             for result in results:
                 if abs(result.overall_score - mean_score) > std_dev:
-                    outliers.append(result.document_id or "unknown")
+                    outliers.append(result.candidate_id or "unknown")
 
         return StatisticalSummary(
             mean_score=mean_score,
@@ -99,12 +99,12 @@ class DeterministicComparison:
         for result in results:
             for criterion in result.criteria_evaluations:
                 criterion_name = criterion.criterion_name
-                document_id = result.document_id or "unknown"
+                candidate_id = result.candidate_id or "unknown"
 
                 if criterion_name not in criteria_scores:
                     criteria_scores[criterion_name] = []
 
-                criteria_scores[criterion_name].append((document_id, criterion.score))
+                criteria_scores[criterion_name].append((candidate_id, criterion.score))
 
         # Analyze each criterion
         analyses = []
@@ -130,8 +130,8 @@ class DeterministicComparison:
 
             analysis = CriteriaAnalysis(
                 criterion_name=criterion_name,
-                best_document_id=best_doc[0],
-                worst_document_id=worst_doc[0],
+                best_candidate_id=best_doc[0],
+                worst_candidate_id=worst_doc[0],
                 score_spread=score_spread,
                 average_score=average_score,
                 performance_trend=trend
@@ -170,7 +170,7 @@ class DeterministicComparison:
             score_breakdown = {name: score for name, score in criterion_scores}
 
             ranking = DocumentRanking(
-                document_id=result.document_id or f"document_{rank}",
+                candidate_id=result.candidate_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -210,7 +210,7 @@ class DeterministicComparison:
             score_breakdown = {name: score for name, score in criterion_scores}
 
             ranking = DocumentRanking(
-                document_id=result.document_id or f"document_{rank}",
+                candidate_id=result.candidate_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -252,7 +252,7 @@ class DeterministicComparison:
             score_breakdown = {name: score for name, score in criterion_scores}
 
             ranking = DocumentRanking(
-                document_id=result.document_id or f"document_{rank}",
+                candidate_id=result.candidate_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -307,7 +307,7 @@ class DeterministicComparison:
             score_breakdown = {name: score for name, score in criterion_scores}
 
             ranking = DocumentRanking(
-                document_id=result.document_id or f"document_{rank}",
+                candidate_id=result.candidate_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -384,7 +384,8 @@ class DeterministicComparison:
             reasons.append(f"Best available option ({winner.overall_score:.1f}/5.0)")
 
         # Criteria leadership
-        winning_criteria = [c for c in criteria_analysis if c.best_document_id == winner.document_id]
+        # Find criteria where the winner excelled
+        winning_criteria = [c for c in criteria_analysis if c.best_candidate_id == winner.candidate_id]
         if winning_criteria:
             if len(winning_criteria) >= len(criteria_analysis) * 0.6:
                 reasons.append(f"Leading in {len(winning_criteria)}/{len(criteria_analysis)} criteria")

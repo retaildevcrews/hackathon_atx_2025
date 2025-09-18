@@ -285,7 +285,7 @@ class EvaluationService:
                 result = await self.evaluate_document(
                     document_text=candidate_data["content"],
                     rubric_name=rubric_id,  # Using rubric_id as rubric_name
-                    document_id=candidate_id,
+                    candidate_id=candidate_id,
                     max_chunks=max_chunks
                 )
 
@@ -361,7 +361,7 @@ class EvaluationService:
         self,
         document_text: str,
         rubric_name: str,
-        document_id: Optional[str] = None,
+        candidate_id: Optional[str] = None,
         max_chunks: int = 10
     ) -> Dict[str, Any]:
         """Evaluate a document against a rubric.
@@ -369,7 +369,7 @@ class EvaluationService:
         Args:
             document_text: Text content to evaluate
             rubric_name: Name of rubric to use
-            document_id: Optional document ID for search filtering
+            candidate_id: Optional document ID for search filtering
             max_chunks: Maximum chunks to retrieve per criterion
 
         Returns:
@@ -388,14 +388,14 @@ class EvaluationService:
 
             # Check if consensus evaluation is enabled
             if self.settings.use_consensus_evaluation:
-                logger.info(f"Using CONSENSUS EVALUATION for document {document_id}")
+                logger.info(f"Using CONSENSUS EVALUATION for document {candidate_id}")
                 return await self._evaluate_with_consensus(
-                    document_text, rubric_data, document_id or "unknown"
+                    document_text, rubric_data, candidate_id or "unknown"
                 )
             else:
-                logger.info(f"Using STANDARD EVALUATION for document {document_id}")
+                logger.info(f"Using STANDARD EVALUATION for document {candidate_id}")
                 return await self._evaluate_standard(
-                    document_text, rubric_data, document_id, max_chunks
+                    document_text, rubric_data, candidate_id, max_chunks
                 )
 
         except Exception as e:
@@ -411,7 +411,7 @@ class EvaluationService:
         self,
         document_text: str,
         rubric_data: Dict[str, Any],
-        document_id: str
+        candidate_id: str
     ) -> Dict[str, Any]:
         """Evaluate using multi-agent consensus process."""
         from services.consensus_evaluation import ConsensusEvaluationService
@@ -421,12 +421,12 @@ class EvaluationService:
         result = await consensus_service.evaluate_with_consensus(
             candidate_content=document_text,
             rubric_data=rubric_data,
-            candidate_id=document_id,
+            candidate_id=candidate_id,
             max_rounds=2
         )
 
         # Add standard metadata
-        result["candidate_id"] = document_id
+        result["candidate_id"] = candidate_id
         result["rubric_name"] = rubric_data.get("rubric_name", "Unknown")
         if "agent_metadata" not in result:
             result["agent_metadata"] = {}
@@ -439,7 +439,7 @@ class EvaluationService:
         self,
         document_text: str,
         rubric_data: Dict[str, Any],
-        document_id: Optional[str],
+        candidate_id: Optional[str],
         max_chunks: int
     ) -> Dict[str, Any]:
         """Evaluate using standard single-agent process."""
@@ -448,7 +448,7 @@ class EvaluationService:
 
             # Step 2: Retrieve document chunks
             document_chunks = await self._retrieve_chunks(
-                document_text, rubric_data, document_id, max_chunks
+                document_text, rubric_data, candidate_id, max_chunks
             )
 
             # Step 3: Evaluate all criteria at once
@@ -467,7 +467,7 @@ class EvaluationService:
             # Build result
             result = EvaluationResult(
                 overall_score=overall_score,
-                document_id=document_id,
+                candidate_id=candidate_id,
                 rubric_name=rubric_name,
                 criteria_evaluations=criteria_evaluations,
                 summary=summary_data["summary"],
@@ -551,6 +551,10 @@ class EvaluationService:
             evaluation_results = []
             for result_dict in individual_results:
                 if "error" not in result_dict:
+                    # Ensure candidate_id is set for compatibility with deterministic analyzer
+                    if "candidate_id" in result_dict and "candidate_id" not in result_dict:
+                        result_dict["candidate_id"] = result_dict["candidate_id"]
+
                     # Convert dict to EvaluationResult for analysis
                     eval_result = EvaluationResult(**result_dict)
                     evaluation_results.append(eval_result)
@@ -598,9 +602,9 @@ class EvaluationService:
         tasks = []
         for doc in documents:
             task = self.evaluate_document(
-                document_text=doc.document_text,
+                document_text=doc.candidate_text,
                 rubric_name=rubric_name,
-                document_id=doc.document_id,
+                candidate_id=doc.candidate_id,
                 max_chunks=max_chunks
             )
             tasks.append(task)
@@ -613,10 +617,10 @@ class EvaluationService:
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Document {documents[i].document_id} evaluation failed: {result}")
+                logger.error(f"Document {documents[i].candidate_id} evaluation failed: {result}")
                 processed_results.append({
                     "error": str(result),
-                    "document_id": documents[i].document_id
+                    "candidate_id": documents[i].candidate_id
                 })
             else:
                 processed_results.append(result)
@@ -663,7 +667,7 @@ class EvaluationService:
         self,
         document_text: str,
         rubric_data: Dict[str, Any],
-        document_id: Optional[str],
+        candidate_id: Optional[str],
         max_chunks: int
     ) -> List[Dict[str, Any]]:
         """Retrieve relevant document chunks."""
@@ -678,7 +682,7 @@ class EvaluationService:
                 for result in search_results:
                     chunk = {
                         "chunk_id": result.get("id", "unknown"),
-                        "document_id": document_id,
+                        "candidate_id": candidate_id,
                         "content": result.get("content", ""),
                         "related_criterion": criterion["criterion_id"],
                         "score": result.get("score", 0.0)
@@ -688,7 +692,7 @@ class EvaluationService:
             # Use full document text as single chunk
             chunks = [{
                 "chunk_id": "full_document",
-                "document_id": document_id,
+                "candidate_id": candidate_id,
                 "content": document_text,
                 "related_criterion": "all",
                 "score": 1.0
