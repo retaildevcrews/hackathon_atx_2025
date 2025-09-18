@@ -63,7 +63,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     <Box>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
-          Decision Kits
+          RubricX
         </Typography>
       </Toolbar>
       <List>
@@ -127,9 +127,15 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     );
   }
 
+  // Desktop: treat as persistent/collapsible; when closed, render nothing so content shifts under full-width AppBar
+  if (!open) {
+    return null;
+  }
+
   return (
     <Drawer
-      variant="permanent"
+      variant="persistent"
+      open={open}
       sx={{
         width: DRAWER_WIDTH,
         flexShrink: 0,

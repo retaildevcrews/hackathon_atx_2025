@@ -34,21 +34,19 @@ describe('NavigationDrawer', () => {
     jest.clearAllMocks();
   });
 
-  it('renders navigation items', () => {
+  it('renders navigation items and branding', () => {
     renderWithRouter(<NavigationDrawer {...defaultProps} />);
 
-    expect(screen.getByText('Decision Kits Platform')).toBeInTheDocument();
-    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('RubricX')).toBeInTheDocument();
     expect(screen.getByText('Decision Kits')).toBeInTheDocument();
     expect(screen.getByText('Rubrics')).toBeInTheDocument();
   });
 
-  it('highlights active navigation item', () => {
-    // Test home page
+  it('highlights active navigation item (decision kits)', () => {
     renderWithRouter(<NavigationDrawer {...defaultProps} />);
-
-    const homeButton = screen.getByText('Home').closest('button');
-    expect(homeButton).toHaveClass('Mui-selected');
+    const kitsLink = screen.getByText('Decision Kits').closest('a');
+    expect(kitsLink).not.toBeNull();
+    expect(kitsLink).toHaveClass('Mui-selected');
   });
 
   it('highlights rubrics when on rubrics page', () => {
@@ -57,8 +55,8 @@ describe('NavigationDrawer', () => {
 
     renderWithRouter(<NavigationDrawer {...defaultProps} />);
 
-    const rubricsButton = screen.getByText('Rubrics').closest('button');
-    expect(rubricsButton).toHaveClass('Mui-selected');
+  const rubricsLink = screen.getByText('Rubrics').closest('a');
+  expect(rubricsLink).toHaveClass('Mui-selected');
   });
 
   it('calls onClose when navigation item is clicked on mobile', () => {
@@ -77,18 +75,15 @@ describe('NavigationDrawer', () => {
       />
     );
 
-    const homeLink = screen.getByText('Home');
-    fireEvent.click(homeLink);
+  const kitsLink = screen.getByText('Decision Kits');
+  fireEvent.click(kitsLink);
 
     // Note: This test may need adjustment based on actual mobile detection logic
     // The component uses Material-UI's useMediaQuery which might need mocking
   });
 
-  it('renders with correct drawer width', () => {
+  it('renders drawer content', () => {
     renderWithRouter(<NavigationDrawer {...defaultProps} />);
-
-    // This would need to check CSS properties or rendered styles
-    // The actual implementation may require more sophisticated testing
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.getByText('RubricX')).toBeInTheDocument();
   });
 });

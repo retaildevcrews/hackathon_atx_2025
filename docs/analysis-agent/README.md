@@ -1,21 +1,23 @@
 # Analysis Agent & Structured Evaluation
 
+> **Status:** Prototype – core orchestration logic is emerging inside `apps/agent` using Azure OpenAI. Retrieval + deterministic rule blending is partially stubbed; full ingestion + search integration pending.
+
 ## Purpose
 
 Combine deterministic rule checks with LLM reasoning to produce structured evaluation output.
 
-## High-Level Sequence
+## High-Level Sequence (Current vs. Target)
 
-1. Request: { documentId, ruleTemplateId }
-2. Fetch rule template from Cosmos.
-3. For each rule/dimension: retrieve relevant chunks (semantic + keyword filter).
-4. Apply deterministic checks (presence, keyword coverage, pattern match).
-5. Build prompt with context + rule spec for LLM reasoning where needed.
-6. Parse LLM output (JSON mode or schema-guided) for rationale and inferred attributes.
-7. Aggregate scores -> dimension -> overall.
-8. Persist evaluation record.
+1. (Current) Request: { ruleTemplateId, payload? } – document retrieval mocked / simplified
+2. Load rule template via `criteria_api` (HTTP GET)
+3. (Future) Retrieve relevant indexed chunks (semantic + keyword filters)
+4. Run deterministic presence / keyword checks
+5. Build prompt(s) with structured rule context for Azure OpenAI
+6. Parse model response (JSON mode / schema) to extract rationale + status
+7. Aggregate rule scores -> dimension -> overall composite
+8. Persist evaluation record (planned store)
 
-## Output Contract (Draft)
+## Output Contract (Draft – Subject to Change)
 
 ```jsonc
 {
@@ -49,7 +51,7 @@ Combine deterministic rule checks with LLM reasoning to produce structured evalu
 - scoring.aggregate
 - evaluations.persist
 
-## Error Handling
+## Error Handling (Planned)
 
 - Partial failure isolation (continue other rules)
 - Mark failed rules with status=error and reason
@@ -61,8 +63,26 @@ Combine deterministic rule checks with LLM reasoning to produce structured evalu
 - Should rules express dependency graph?
 - Adaptive prompt size strategies?
 
+## Environment Variables
+
+The agent relies on the following (see `apps/agent/.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| AZURE_OPENAI_API_KEY | Auth for Azure OpenAI completion / chat / embeddings |
+| AZURE_OPENAI_ENDPOINT | Base endpoint for Azure OpenAI resource |
+| AZURE_OPENAI_DEPLOYMENT | Model deployment name used for reasoning calls |
+| AZURE_OPENAI_API_VERSION | API version (pinned for consistency) |
+| AZURE_SEARCH_ENDPOINT | (Future) Cognitive Search endpoint for retrieval |
+| AZURE_SEARCH_API_KEY | (Future) API key for search queries |
+| AZURE_SEARCH_INDEX | (Future) Index name containing chunks |
+| CRITERIA_API_URL | Base URL to fetch rule templates |
+| LOG_LEVEL | Adjust logging verbosity |
+
 ## Next Steps
 
-- Define deterministic rule evaluator interface
-- Draft prompt templates per rule type
-- Implement evaluation aggregator prototype
+- Introduce retrieval abstraction (noop adapter initially)
+- Add deterministic evaluator module (keyword / presence)
+- Implement prompt templating with guardrails (length, schema enforcement)
+- Persist evaluation results (Cosmos or file-based prototype)
+- Add lightweight cost / timing metrics collection

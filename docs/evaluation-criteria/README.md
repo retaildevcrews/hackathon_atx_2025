@@ -1,18 +1,23 @@
 # Evaluation Criteria Authoring & Rule Store
 
+> **Status:** Early prototype – core CRUD and retrieval patterns are being shaped; publishing workflow and validation linting are future.
+
 ## Purpose
 
-Provide a way to define, version, and retrieve rule templates used to evaluate documents.
+Provide a way to define, version, and retrieve rule templates ("rubrics") used to evaluate documents and other inputs. The `criteria_api` service owns persistence (Cosmos DB) and exposes retrieval endpoints consumed by the evaluation agent.
 
-## Core Concerns
+## Core Concerns (Phase 1 vs Future)
 
-- Template schema (rules, weights, dimensions)
-- Versioning & immutability
-- Cosmos DB data model & partitioning
-- API surface for CRUD + publish
-- Validation & linting of rule definitions
+| Concern | Phase 1 (Prototype) | Future |
+|---------|---------------------|--------|
+| Template schema | Minimal fields (id, criteria, weights) | Rich metadata, localization |
+| Versioning | Manual (new id) | Immutable published versions + draft channel |
+| Immutability | Not enforced yet | Enforced after publish flag |
+| Partitioning | Single container / simple partition key | Multi-tenant / logical partitioning |
+| Validation | Basic shape checks | Semantic lint (weight sum, duplicates, reserved ids) |
+| CRUD API | Create/read/delete (TBD) | Draft/publish lifecycle + audit trail |
 
-## Draft Schema
+## Draft Schema (Current Direction)
 
 ```jsonc
 {
@@ -38,7 +43,7 @@ Provide a way to define, version, and retrieve rule templates used to evaluate d
 }
 ```
 
-## APIs (Proposed)
+## APIs (Proposed / Iterating)
 
 - GET /rules/{documentType}/{version}
 - GET /rules/{documentType}/latest
@@ -54,6 +59,7 @@ Provide a way to define, version, and retrieve rule templates used to evaluate d
 
 ## Next Steps
 
-- Finalize schema
-- Implement validation logic
-- Seed with a minimal RFP template
+- Implement initial POST/GET in `criteria_api`
+- Add weight sum validator (1.0 ± epsilon)
+- Introduce `status: draft|published`
+- Seed with a minimal RFP + generic evaluation example

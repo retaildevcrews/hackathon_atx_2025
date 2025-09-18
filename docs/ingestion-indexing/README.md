@@ -1,9 +1,13 @@
 # Document Ingestion & Indexing
 
+> **Status:** Not yet implemented – current prototype uses manually prepared or stubbed content. This document captures the intended architecture.
+
 ## Purpose
+
 Automate ingestion of uploaded documents, extraction of content, and indexing for retrieval.
 
-## Flow
+## Flow (Planned)
+
 1. User uploads / drops file into blob container (`raw-docs`).
 2. Ingestion watcher (timer or event) detects new blob.
 3. Extraction service parses text + structure:
@@ -14,7 +18,8 @@ Automate ingestion of uploaded documents, extraction of content, and indexing fo
 5. Azure AI Search index updated (index name: `docs-index`).
 6. Ingestion status updated in Cosmos DB (`ingestionStatus` container).
 
-### Azure Document Intelligence Integration
+### Azure Document Intelligence Integration (Planned)
+
 | Aspect | Choice / Notes |
 |--------|----------------|
 | Model | `prebuilt-layout` (captures text, tables, titles, reading order) |
@@ -24,14 +29,16 @@ Automate ingestion of uploaded documents, extraction of content, and indexing fo
 | Confidence Scores | Persist average + min per chunk for quality filtering |
 | Cost Optimization | Skip layout if plain-text DOCX < size threshold |
 
-### Enrichment Pipeline (Optional Stages)
+### Enrichment Pipeline (Optional Stages / Future)
+
 1. Raw extraction (layout model output)
 2. Structural normalization (merge tiny lines, keep headings)
 3. Section inference (regex + heading heuristics + ML later)
 4. Key phrase / entity extraction (future: Azure Language)
 5. Embedding generation (Azure OpenAI embedding model) stored inline or side store
 
-### Failure & Retry Strategy
+### Failure & Retry Strategy (Draft)
+
 | Failure Type | Handling |
 |--------------|----------|
 | Transient API timeout | Exponential backoff (max 3 attempts) |
@@ -39,13 +46,16 @@ Automate ingestion of uploaded documents, extraction of content, and indexing fo
 | Layout parsing partial success | Index successful pages; flag `partial=true` in metadata |
 | Duplicate (hash match) | Short-circuit; optionally re-use prior chunks |
 
-### Alternative Path (Low-Cost Mode)
+### Alternative Path (Low-Cost Mode) – Future Toggle
+
 Environment flag `LOW_COST_MODE=true` may:
+
 - Skip layout model; use basic text extract
 - Skip embeddings until first evaluation request
 - Use larger chunk size to reduce tokenization overhead
 
-### Chunking Heuristics (Draft)
+### Chunking Heuristics (Draft – Subject to empirical tuning)
+
 | Parameter | Value (Initial) | Rationale |
 |-----------|-----------------|-----------|
 | Target tokens | 800 | Balance context richness vs. window occupancy |
@@ -53,12 +63,14 @@ Environment flag `LOW_COST_MODE=true` may:
 | Overlap tokens | 80 | Maintain continuity for cross-sentence references |
 | Section boundary bias | Strong | Start new chunk at heading when possible |
 
-### Index Update Modes
+### Index Update Modes (Intended)
+
 - Upsert per chunk (id = documentId + sequential suffix)
 - Soft delete old chunks on re-ingest if content hash differs
 - Store document-level metadata separately (Cosmos) to keep index lean
 
-### Cosmos vs. Index Responsibilities
+### Cosmos vs. Index Responsibilities (Separation of Concerns)
+
 | Concern | Cosmos | Search Index |
 |---------|--------|--------------|
 | Status tracking | Yes | No |
@@ -67,26 +79,30 @@ Environment flag `LOW_COST_MODE=true` may:
 | Embeddings | In index vector field | Primary location |
 | Audit trail | Yes | No |
 
-### Security & Governance Notes
+### Security & Governance Notes (Initial Considerations)
+
 - SAS-scoped writes for upload client
 - Private endpoint for Search + Cosmos (future hardening)
 - Hash-based dedupe prevents storage bloat
 
-### Metrics (Proposed)
+### Metrics (Proposed – To Instrument After MVP)
+
 - Ingestion latency (upload -> indexed)
 - Extraction success rate (%)
 - Avg tokens per chunk
 - Re-ingest dedupe hit rate
 
-### Minimal Pseudo Sequence
-```
+### Minimal Pseudo Sequence (Concept)
+
+```text
 upload -> blob event -> queue message -> extractor worker ->
   call Document Intelligence -> poll until complete ->
   normalize -> chunk -> embed -> index ->
   write status (indexed) -> emit event (optional)
 ```
 
-## Status Record Example
+## Status Record Example (Concept JSON)
+
 ```jsonc
 {
   "id": "rfp_2025_0042",
@@ -102,7 +118,8 @@ upload -> blob event -> queue message -> extractor worker ->
 }
 ```
 
-## Index Field Draft
+## Index Field Draft (Candidate Schema)
+
 | Field | Type | Notes |
 |-------|------|-------|
 | id | string | chunk id |
@@ -114,16 +131,21 @@ upload -> blob event -> queue message -> extractor worker ->
 | metadata | string/json | dynamic properties |
 
 ## Considerations
+
 - Idempotency via file hash
 - Retry policies for extraction failures
 - Max chunk token length boundaries
 - Redaction layer (future)
 
 ## Open Questions
+
 - Need inline table/image representation now or later?
 - Should we enrich with key phrase extraction?
 
-## Next Steps
+## Next Steps (Before Implementation)
+
+- Decide build vs. defer for ingestion during current milestone
+- Provide minimal mock service returning canned status
 - Define index schema JSON
-- Prototype chunker heuristics
+- Prototype chunker heuristics (script form)
 - Implement ingestion status service

@@ -1,58 +1,75 @@
 # Results & Authoring UI
 
+> **Status:** Active development – decision kits list/detail and rubrics list/detail/edit pages implemented; full rule template authoring and comparison views are future.
+
 ## Purpose
+
 Provide a unified interface for defining evaluation criteria and viewing document evaluation results.
 
-## Primary Views
-1. Rule Templates
-   - List, filter by document type
-   - Create / edit / publish workflow
-   - Version history panel
-2. Ingestion Dashboard
-   - Recent uploads + status
-   - Retry & re-index actions
-3. Evaluation Detail
-   - Overall + dimension scores
-   - Rule-level findings with rationale & evidence links
-4. (Future) Comparison View
-   - Multi-doc or multi-template score comparison
+## Primary Views (Current vs. Planned)
 
-## Interaction Model
-- Publish flow locks template (creates immutable version)
-- Evaluate action selectable from document row (choose template)
-- Real-time status polling (or websocket push) for ingestion/evaluation progress
+| View | Current State | Future Enhancements |
+|------|---------------|---------------------|
+| Decision Kits List | Implemented | Sorting, filtering, bulk actions |
+| Decision Kit Detail | Implemented (candidates, attach rubric) | Side-by-side candidate comparison |
+| Rubrics List | Implemented | Tag filtering, search |
+| Rubric Detail | Implemented | Historical version diff |
+| Rubric Create/Edit | Implemented (basic fields) | Advanced weight editor, validation hints |
+| Rule Template Authoring | Not yet (uses rubrics flow) | Dedicated builder with live preview |
+| Evaluation Detail | Placeholder / emerging | Findings table w/ evidence linking |
+| Ingestion Dashboard | Not implemented | Status + retry controls |
+| Comparison View | Not implemented | Multi-rubric or multi-candidate compare |
 
-## Component Sketch (React / TS - future)
+## Interaction Model (Evolving)
+
+- Navigation drawer provides persistent access to Decision Kits & Rubrics.
+- Light/dark theme toggle in AppBar.
+- Sidebar collapsible on desktop & mobile.
+- Future: inline rubric weight adjustments with immediate scoring preview.
+
+## Component Sketch (Indicative – Will Evolve)
+
+```text
+src/components/
+   navigation/NavigationDrawer.tsx
+   decisionKits/DecisionKitForm.tsx
+   decisionKits/DeleteDecisionKitDialog.tsx
+   rubrics/RubricForm.tsx (future restructuring)
+   AttachRubricForm.tsx
 ```
-/components
-  /rules
-    RuleTemplateList.tsx
-    RuleTemplateEditor.tsx
-  /ingestion
-    IngestionTable.tsx
-  /evaluation
-    EvaluationSummary.tsx
-    FindingsTable.tsx
-```
 
-## Data Fetch Contracts (Draft)
-- GET /rules?documentType=RFP
-- GET /rules/{id}
-- GET /ingestion?status=indexed
-- GET /evaluations/{id}
-- POST /evaluate
+## Data Fetch Contracts (Current / Planned)
+
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| GET /criteria (or /rubrics) | Implemented | List rubrics (naming may evolve) |
+| GET /criteria/{id} | Implemented | Retrieve rubric detail |
+| POST /criteria | Implemented | Create rubric |
+| PUT /criteria/{id} | Implemented | Update rubric |
+| GET /decision-kits | Implemented | List decision kits |
+| GET /decision-kits/{id} | Implemented | Detail with attached rubric + candidates |
+| POST /decision-kits | Implemented | Create kit |
+| DELETE /decision-kits/{id} | Implemented | Delete kit |
+| POST /decision-kits/{id}/candidates | Implemented | Add candidate |
+| (Future) GET /evaluations/{id} | Planned | Structured evaluation output |
+| (Future) POST /evaluate | Planned | Trigger evaluation run |
 
 ## UX Considerations
-- Show confidence / rationale toggle
-- Highlight missing required sections distinctly
-- Provide export (JSON first; PDF later)
+
+- Keep left navigation minimal; rely on contextual actions in pages.
+- Provide progressive disclosure for advanced rubric settings.
+- Ensure mobile layout retains full-width header for consistency.
+- Future: export evaluation results (JSON first).
 
 ## Open Questions
-- Auth model? (JWT / Entra ID?)
-- Dark mode priority?
-- Accessibility baseline (semantic HTML + ARIA)
+
+- Auth integration timeline (Entra ID vs. local dev only?)
+- How to visualize rubric weight impact dynamically?
+- Best placement for evaluation run status (toast vs. inline panel)?
 
 ## Next Steps
-- Wireframe low-fi screens
-- Define component props / data contracts
-- Decide on state management (query library vs. global store)
+
+- Refactor rubric form into domain folder
+- Add evaluation detail placeholder page
+- Introduce search / filter in Rubrics List
+- Persist sidebar collapsed state in localStorage

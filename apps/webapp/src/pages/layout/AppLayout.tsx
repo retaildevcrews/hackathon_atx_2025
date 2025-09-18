@@ -8,12 +8,13 @@ import {
   IconButton
 } from '@mui/material';
 import { Menu as MenuIcon, DarkMode, LightMode } from '@mui/icons-material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { NavigationDrawer, DRAWER_WIDTH } from '../../components/navigation/NavigationDrawer';
 import { ColorModeContext } from '../../main';
 
 export const AppLayout: React.FC = () => {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Drawer should be open by default on desktop but closed on mobile; keep simple default true
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const { mode, toggleTheme } = useContext(ColorModeContext);
 
   const handleDrawerToggle = () => {
@@ -28,24 +29,39 @@ export const AppLayout: React.FC = () => {
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
         position="fixed"
+        color="primary"
         sx={{
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          ml: { md: `${DRAWER_WIDTH}px` },
+          width: '100%',
           zIndex: (theme) => theme.zIndex.drawer + 1,
+          transition: (theme) => theme.transitions.create(['margin-left'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label={drawerOpen ? 'collapse menu' : 'expand menu'}
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Decision Kits Platform
+          <Typography
+            variant="h6"
+            noWrap
+            component={Link}
+            to="/"
+            sx={{
+              textDecoration: 'none',
+              color: 'inherit',
+              '&:hover': { opacity: 0.85 },
+              cursor: 'pointer'
+            }}
+          >
+            RubricX
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <IconButton color="inherit" aria-label="toggle theme" onClick={toggleTheme}>
@@ -63,8 +79,11 @@ export const AppLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          ml: { md: 0 },
+          transition: (theme) => theme.transitions.create(['margin-left'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
+          ml: { md: drawerOpen ? `${DRAWER_WIDTH}px` : 0 },
         }}
       >
         <Toolbar /> {/* This toolbar acts as spacer for fixed AppBar */}
