@@ -40,6 +40,8 @@ def update_rubric(rubric_id: str, payload: RubricUpdate):
     except RubricValidationError as e:
         raise HTTPException(status_code=422, detail={"error": e.code, **e.ctx, "detail": e.detail})
     except ValueError as e:
+        if "immutable" in str(e):
+            raise HTTPException(status_code=409, detail="Rubric already published")
         raise HTTPException(status_code=400, detail=str(e))
     if not r:
         raise HTTPException(status_code=404, detail="Rubric not found")

@@ -2,12 +2,55 @@ import io
 import json
 from fastapi.testclient import TestClient
 from app.main import app
+from app.utils.db import SessionLocal
+from app.models.rubric_orm import RubricORM
+from app.models.decision_kit_orm import DecisionKitORM
+import uuid
 
 client = TestClient(app)
 
 
+def _get_any_rubric_id():
+    db = SessionLocal(); rid=None
+    try:
+        r = db.query(RubricORM).first()
+        if r:
+            rid = r.id
+    finally:
+        db.close()
+    return rid
+
+
+def _new_decision_kit():
+    """Create a fresh decision kit each time to isolate candidate uniqueness constraints.
+
+    Tests previously reused the first decision kit which caused candidate name collisions
+    (e.g., multiple tests attempting to create "Jane Doe"). We instead generate a unique
+    kit per test using UUIDs so candidate names can repeat safely across tests while still
+    ensuring uniqueness within a single kit is enforced.
+    """
+    db = SessionLocal()
+    try:
+        rid = _get_any_rubric_id()
+        dk = DecisionKitORM(
+            id=str(uuid.uuid4()),
+            name_normalized=f"test-kit-{uuid.uuid4()}",
+            name_original="Test Kit",
+            description="Per-test kit for candidate tests",
+            rubric_id=rid,
+            rubric_version="1.0.0",
+            rubric_published=True,
+        )
+        db.add(dk)
+        db.commit()
+        return dk.id
+    finally:
+        db.close()
+
+
 def test_create_candidate_success():
-    payload = {"name": "Jane Doe", "description": "Senior Engineer"}
+    kit_id = _new_decision_kit()
+    payload = {"name": "Jane Doe", "description": "Senior Engineer", "decisionKitId": kit_id}
     r = client.post("/candidates/", json=payload)
     assert r.status_code == 201, r.text
     data = r.json()
@@ -18,7 +61,8 @@ def test_create_candidate_success():
 
 
 def test_create_candidate_duplicate_name():
-    payload = {"name": "Duplicate Person"}
+    kit_id = _new_decision_kit()
+    payload = {"name": "Duplicate Person", "decisionKitId": kit_id}
     r1 = client.post("/candidates/", json=payload)
     assert r1.status_code == 201
     r2 = client.post("/candidates/", json=payload)
@@ -32,9 +76,10 @@ def test_get_candidate_not_found():
 
 
 def test_list_candidates_ordering():
+    kit_id = _new_decision_kit()
     # create two; ensure most recent first by createdAt desc (implementation uses created_at desc)
-    n1 = client.post("/candidates/", json={"name": "Order Test A"}).json()
-    n2 = client.post("/candidates/", json={"name": "Order Test B"}).json()
+    n1 = client.post("/candidates/", json={"name": "Order Test A", "decisionKitId": kit_id}).json()
+    n2 = client.post("/candidates/", json={"name": "Order Test B", "decisionKitId": kit_id}).json()
     r = client.get("/candidates/")
     assert r.status_code == 200
     items = r.json()
@@ -44,7 +89,8 @@ def test_list_candidates_ordering():
 
 
 def test_material_upload_and_list_and_delete():
-    cand = client.post("/candidates/", json={"name": "Material Owner"}).json()
+    kit_id = _new_decision_kit()
+    cand = client.post("/candidates/", json={"name": "Material Owner", "decisionKitId": kit_id}).json()
     file_content = b"hello world" * 100
     files = {"file": ("test.txt", file_content, "text/plain")}
     r_up = client.post(f"/candidates/{cand['id']}/materials", files=files)
@@ -68,7 +114,8 @@ def test_material_upload_and_list_and_delete():
 
 
 def test_material_upload_empty_file_rejected():
-    cand = client.post("/candidates/", json={"name": "Empty File Owner"}).json()
+    kit_id = _new_decision_kit()
+    cand = client.post("/candidates/", json={"name": "Empty File Owner", "decisionKitId": kit_id}).json()
     files = {"file": ("empty.txt", b"", "text/plain")}
     r_up = client.post(f"/candidates/{cand['id']}/materials", files=files)
     assert r_up.status_code == 400
@@ -76,7 +123,8 @@ def test_material_upload_empty_file_rejected():
 
 
 def test_material_upload_oversize_rejected():
-    cand = client.post("/candidates/", json={"name": "Big File Owner"}).json()
+    kit_id = _new_decision_kit()
+    cand = client.post("/candidates/", json={"name": "Big File Owner", "decisionKitId": kit_id}).json()
     # create >10MB in memory (10MB + 1 byte)
     big = b"a" * (10 * 1024 * 1024 + 1)
     files = {"file": ("big.bin", big, "application/octet-stream")}

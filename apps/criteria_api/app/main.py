@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import criteria, rubrics, decision_kits, candidates
 from app.utils.db import Base, engine
+import os
 from app.models import criteria_orm  # ensure import side effects
 from app.models import rubric_orm  # ensure rubric table
 from app.models import rubric_criterion_orm  # ensure assoc table
@@ -47,16 +48,31 @@ def _migrate_legacy_rubric_schema():
         conn.execute(text("COMMIT"))
 
 
-_migrate_legacy_rubric_schema()
-Base.metadata.create_all(bind=engine)
+def _reset_database_unless_preserved():
+    """Always rebuild schema & seed unless PRESERVE_DB_ON_START=true.
 
-# Seed sample data only if empty
-seed()
+    This guarantees a clean set of curated seed data (removing any prior 'test kit' artifacts)
+    on each container start. To retain data between restarts, set PRESERVE_DB_ON_START=true.
+    Legacy DB_RESET_ON_START flag is ignored in favor of this default-reset model.
+    """
+    if os.getenv("PRESERVE_DB_ON_START", "false").lower() in ("1", "true", "yes"):
+        Base.metadata.create_all(bind=engine)
+        # Idempotent seed ensures missing required base data is present
+        seed()
+        return False
+    # drop & recreate
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    seed()
+    return True
+
+_migrate_legacy_rubric_schema()
+_reset_database_unless_preserved()
 
 app.include_router(criteria.router, prefix="/criteria", tags=["criteria"])
 app.include_router(rubrics.router, prefix="/rubrics", tags=["rubrics"])
 app.include_router(decision_kits.router, prefix="/decision-kits", tags=["decision_kits"])
-app.include_router(candidates.router, prefix="/candidates", tags=["candidates"]) 
+app.include_router(candidates.router, prefix="/candidates", tags=["candidates"])
 
 @app.get("/")
 def root():
