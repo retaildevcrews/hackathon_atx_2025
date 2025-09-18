@@ -2,6 +2,7 @@ import uuid
 from fastapi.testclient import TestClient
 from app.main import app
 from app.utils.db import SessionLocal
+from sqlalchemy import text
 from app.models.candidate_orm import CandidateORM
 from app.models.decision_kit_orm import DecisionKitORM, DecisionKitCandidateORM
 from datetime import datetime, timezone
@@ -9,8 +10,8 @@ from datetime import datetime, timezone
 client = TestClient(app)
 
 
-def _create_candidate(name: str):
-    r = client.post('/candidates', json={'name': name})
+def _create_candidate(name: str, decision_kit_id: str):
+    r = client.post('/candidates/', json={'name': name, 'decisionKitId': decision_kit_id})
     assert r.status_code == 201, r.text
     return r.json()['id']
 
@@ -18,7 +19,7 @@ def _create_candidate(name: str):
 def _create_decision_kit(db):
     kit_id = str(uuid.uuid4())
     # Minimal viable rubric linkage assumption: pick first rubric row
-    rubric = db.execute('SELECT id, version, published FROM rubrics LIMIT 1').fetchone()
+    rubric = db.execute(text('SELECT id, version, published FROM rubrics LIMIT 1')).fetchone()
     if not rubric:
         # If no rubric seeded tests may have to seed first; for now skip association tests
         return None
@@ -41,17 +42,8 @@ def test_delete_candidate_removes_materials_and_assocs():
     dk = _create_decision_kit(db)
     db.commit()
     db.refresh(dk)
-    cand_id = _create_candidate('DeleteTarget')
-    # Associate candidate with decision kit if kit created
-    if dk:
-        assoc = DecisionKitCandidateORM(
-            id=str(uuid.uuid4()),
-            decision_kit_id=dk.id,
-            candidate_id=cand_id,
-            position=0,
-        )
-        db.add(assoc)
-        db.commit()
+    # Create candidate within this decision kit context (service auto-creates association)
+    cand_id = _create_candidate('DeleteTarget', dk.id)
     # Upload a material
     resp = client.post(f'/candidates/{cand_id}/materials', files={'file': ('note.txt', b'hello', 'text/plain')})
     assert resp.status_code == 201
