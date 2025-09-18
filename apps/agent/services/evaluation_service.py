@@ -428,6 +428,66 @@ class EvaluationService:
                     "summary": f"Evaluation failed: Rubric '{rubric_name}' not found"
                 }
 
+            # Check if consensus evaluation is enabled
+            if self.settings.use_consensus_evaluation:
+                logger.info(f"Using CONSENSUS EVALUATION for document {document_id}")
+                return await self._evaluate_with_consensus(
+                    document_text, rubric_data, document_id or "unknown"
+                )
+            else:
+                logger.info(f"Using STANDARD EVALUATION for document {document_id}")
+                return await self._evaluate_standard(
+                    document_text, rubric_data, document_id, max_chunks
+                )
+
+        except Exception as e:
+            logger.error(f"Error during document evaluation: {e}")
+            return {
+                "error": str(e),
+                "overall_score": 0.0,
+                "criteria_evaluations": [],
+                "summary": f"Evaluation failed due to error: {str(e)}"
+            }
+
+    async def _evaluate_with_consensus(
+        self,
+        document_text: str,
+        rubric_data: Dict[str, Any],
+        document_id: str
+    ) -> Dict[str, Any]:
+        """Evaluate using multi-agent consensus process."""
+        from services.consensus_evaluation import ConsensusEvaluationService
+
+        consensus_service = ConsensusEvaluationService(llm=self.llm)
+
+        result = await consensus_service.evaluate_with_consensus(
+            candidate_content=document_text,
+            rubric_data=rubric_data,
+            candidate_id=document_id,
+            max_rounds=2
+        )
+
+        # Add standard metadata
+        result["candidate_id"] = document_id
+        result["rubric_name"] = rubric_data.get("rubric_name", "Unknown")
+        if "agent_metadata" not in result:
+            result["agent_metadata"] = {}
+        result["agent_metadata"]["evaluation_model"] = "multi-agent-consensus"
+        result["agent_metadata"]["evaluation_type"] = "debate_style"
+
+        return result
+
+    async def _evaluate_standard(
+        self,
+        document_text: str,
+        rubric_data: Dict[str, Any],
+        document_id: Optional[str],
+        max_chunks: int
+    ) -> Dict[str, Any]:
+        """Evaluate using standard single-agent process."""
+        try:
+            rubric_name = rubric_data.get("rubric_name", "Unknown")
+
             # Step 2: Retrieve document chunks
             document_chunks = await self._retrieve_chunks(
                 document_text, rubric_data, candidate_id, max_chunks
@@ -458,19 +518,19 @@ class EvaluationService:
                 agent_metadata={
                     "evaluation_model": "langchain-azure-openai",
                     "chunks_analyzed": str(len(document_chunks)),  # Convert to string
-                    "workflow": "batch_evaluation"
+                    "workflow": "standard_evaluation"
                 }
             )
 
             return result.dict()
 
         except Exception as e:
-            logger.error(f"Error during document evaluation: {e}")
+            logger.error(f"Error during standard evaluation: {e}")
             return {
                 "error": str(e),
                 "overall_score": 0.0,
                 "criteria_evaluations": [],
-                "summary": f"Evaluation failed: {e}"
+                "summary": f"Standard evaluation failed: {e}"
             }
 
     async def evaluate_document_batch(

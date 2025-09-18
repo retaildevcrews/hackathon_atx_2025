@@ -224,6 +224,24 @@ async def evaluation_health() -> Dict[str, str]:
     }
 
 
+@router.get("/evaluation-mode")
+async def get_evaluation_mode() -> Dict[str, Any]:
+    """Get current evaluation configuration."""
+    from config import get_settings
+    settings = get_settings()
+
+    return {
+        "search_mode": "Local Search" if settings.use_local_search else "Azure Search",
+        "evaluation_mode": "Multi-Agent Consensus" if settings.use_consensus_evaluation else "Standard Single-Agent",
+        "consensus_details": {
+            "enabled": settings.use_consensus_evaluation,
+            "agent_a": "Strict Evaluator (Conservative, Evidence-Based)",
+            "agent_b": "Generous Evaluator (Optimistic, Potential-Focused)",
+            "process": "Debate-Style with Iterative Refinement"
+        } if settings.use_consensus_evaluation else None
+    }
+
+
 @router.get("/test-candidates")
 async def list_test_candidates(
     evaluation_service: EvaluationService = Depends(get_evaluation_service)
