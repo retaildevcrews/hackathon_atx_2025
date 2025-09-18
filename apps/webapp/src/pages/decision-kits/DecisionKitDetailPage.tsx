@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack, Snackbar } from '@mui/material';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack, Snackbar, TextField } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import SaveIcon from '@mui/icons-material/Save';
 import { useNavigate } from 'react-router-dom';
 import { DeleteKitButton } from '../../components/decisionKits/DeleteKitButton';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -13,12 +14,12 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { RubricCriteriaTable } from '../../components/RubricCriteriaTable';
 import { AttachRubricForm } from '../../components/AttachRubricForm';
 import { fetchRubricSummary } from '../../api/rubrics';
-import { assignRubricToDecisionKit } from '../../api/decisionKits';
+import { assignRubricToDecisionKit, updateDecisionKit } from '../../api/decisionKits';
 import { evaluateCandidates } from '../../api/agent';
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
-  const { kit, loading, error, retry } = useDecisionKit(kitId || null);
+  const { kit, loading, error, retry, reload } = useDecisionKit(kitId || null);
   const rubricId = kit?.rubric?.id || kit?.rubricId;
   const needsRubricFetch = !kit?.rubric && !!rubricId;
   const { rubric, loading: rubricLoading, error: rubricError, retry: retryRubric } = useRubricSummary(needsRubricFetch ? rubricId : undefined);
@@ -28,6 +29,10 @@ export const DecisionKitDetailPage: React.FC = () => {
   const [candidatesOpen, setCandidatesOpen] = useState(true);
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editingDescription, setEditingDescription] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   // const [attachError, setAttachError] = useState<string | null>(null);
 
   if (process.env.NODE_ENV !== 'production') {
@@ -59,13 +64,93 @@ export const DecisionKitDetailPage: React.FC = () => {
 
   const currentRubricId = (effectiveRubric && (effectiveRubric as any).id) || rubricId;
 
+  const nameValue = editingName !== null ? editingName : kit.name;
+  const descriptionValue = editingDescription !== null ? editingDescription : (kit.description || '');
+
+  // Validate name on change (length 3-60, allowed characters A-Za-z0-9 _-)
+  const validateName = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Name is required';
+    if (trimmed.length < 3 || trimmed.length > 60) return 'Name must be 3-60 characters';
+    if (!/^[A-Za-z0-9 _-]+$/.test(trimmed)) return 'Only letters, numbers, spaces, underscore, and dash are allowed';
+    return null;
+  };
+
   return (
     <Box>
       <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>{kit.name}</Typography>
-        <DeleteKitButton kitId={kit.id} kitName={kit.name} />
+        <Box flex={1} mr={2}>
+          <TextField
+            label="Decision Kit Name"
+            value={nameValue}
+            size="small"
+            onChange={(e) => {
+              const v = e.target.value;
+              setEditingName(v);
+              setNameError(validateName(v));
+            }}
+            fullWidth
+            error={!!nameError}
+            helperText={nameError || ' '}
+          />
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            startIcon={<SaveIcon />}
+            disabled={saving || (editingName === null && editingDescription === null) || (!!nameError && editingName !== null)}
+            onClick={async () => {
+              try {
+                setSaving(true);
+                const payload: any = {};
+                const nameTrim = editingName !== null ? editingName.trim() : null;
+                const descTrim = editingDescription !== null ? editingDescription.trim() : null;
+                if (editingName !== null) {
+                  const err = validateName(nameTrim || '');
+                  setNameError(err);
+                  if (err) throw new Error(err);
+                }
+                if (editingName !== null && nameTrim !== kit.name) payload.name = nameTrim;
+                if (editingDescription !== null && descTrim !== (kit.description || '')) payload.description = descTrim;
+                if (Object.keys(payload).length === 0) {
+                  setToast({ open: true, message: 'No changes to save', severity: 'error' });
+                } else {
+                  await updateDecisionKit(kit.id, payload);
+                  // reset edit fields
+                  setEditingName(null);
+                  setEditingDescription(null);
+                  setNameError(null);
+                  // refresh the kit so UI reflects latest server data
+                  await reload();
+                  setToast({ open: true, message: 'Decision kit saved', severity: 'success' });
+                }
+              } catch (e: any) {
+                const msg = e?.response?.data?.detail || e?.message || 'Failed to save';
+                if (typeof msg === 'string' && msg.toLowerCase().includes('exists')) {
+                  setNameError('A decision kit with this name already exists');
+                }
+                setToast({ open: true, message: msg, severity: 'error' });
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            Save
+          </Button>
+          <DeleteKitButton kitId={kit.id} kitName={kit.name} />
+        </Stack>
       </Stack>
-      {kit.description && <Typography variant="body1" sx={{ mb: 3 }}>{kit.description}</Typography>}
+      <TextField
+        label="Description"
+        value={descriptionValue}
+        onChange={(e) => setEditingDescription(e.target.value)}
+        fullWidth
+        multiline
+        minRows={2}
+        sx={{ mb: 3 }}
+      />
       <Box sx={{ mb: 4 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>Rubric</Typography>

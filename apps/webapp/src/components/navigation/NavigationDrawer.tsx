@@ -42,11 +42,13 @@ const navigationItems: NavigationItem[] = [
 interface NavigationDrawerProps {
   open: boolean;
   onClose: () => void;
+  onClosed?: () => void;
 }
 
 export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   open,
-  onClose
+  onClose,
+  onClosed
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -72,7 +74,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             <ListItemButton
               component={Link}
               to={item.path}
-              onClick={isMobile ? onClose : undefined}
+              onClick={onClose}
               selected={isActive(item.path)}
               sx={{
                 '&.Mui-selected': {
@@ -121,6 +123,13 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             width: DRAWER_WIDTH,
           },
         }}
+        onTransitionEnd={(e) => {
+          // When the Drawer has finished closing, signal onClosed
+          const paper = (e.target as HTMLElement)?.classList?.contains('MuiDrawer-paper');
+          if (!open && onClosed && paper) {
+            onClosed();
+          }
+        }}
       >
         {drawerContent}
       </Drawer>
@@ -138,6 +147,12 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box'
+        }
+      }}
+      onTransitionEnd={(e) => {
+        const paper = (e.target as HTMLElement)?.classList?.contains('MuiDrawer-paper');
+        if (!open && onClosed && paper) {
+          onClosed();
         }
       }}
     >

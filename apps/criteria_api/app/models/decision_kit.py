@@ -31,6 +31,24 @@ class DecisionKitUpdateCandidates(BaseModel):
     candidateIds: List[str]
 
 
+class DecisionKitPatch(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    rubricId: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: Optional[str]):
+        if v is None:
+            return v
+        if not v or len(v) < 3 or len(v) > 60:
+            raise ValueError("name length 3-60 required")
+        import re
+        if not re.match(r"^[A-Za-z0-9 _-]+$", v):
+            raise ValueError("invalid characters in name")
+        return v
+
+
 class DecisionKit(BaseModel):
     id: str
     name: str

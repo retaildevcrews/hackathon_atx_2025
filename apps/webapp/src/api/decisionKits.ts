@@ -81,3 +81,17 @@ export async function assignRubricToDecisionKit(kitId: string, rubricId: string)
   detailCache.set(updated.id, updated);
   return updated;
 }
+
+// Update decision kit fields (partial)
+export interface UpdateDecisionKitInput { name?: string; description?: string; rubricId?: string }
+export async function updateDecisionKit(kitId: string, input: UpdateDecisionKitInput): Promise<DecisionKitDetail> {
+  if (!kitId) throw new Error('kitId is required');
+  const payload: UpdateDecisionKitInput = {};
+  if (typeof input.name !== 'undefined') payload.name = input.name?.trim();
+  if (typeof input.description !== 'undefined') payload.description = input.description?.trim();
+  if (typeof input.rubricId !== 'undefined') payload.rubricId = input.rubricId;
+  const res = await api.patch<DecisionKitDetail>(`/decision-kits/${encodeURIComponent(kitId)}`, payload);
+  const updated = res.data;
+  detailCache.set(updated.id, updated);
+  return updated;
+}
