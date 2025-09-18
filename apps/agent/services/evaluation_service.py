@@ -416,6 +416,17 @@ class EvaluationService:
         """Evaluate using multi-agent consensus process."""
         from services.consensus_evaluation import ConsensusEvaluationService
 
+        # Log LLM configuration being passed to consensus
+        logger.info("🤝 CONSENSUS EVALUATION SETUP")
+        logger.info(f"   LLM Instance: {type(self.llm).__name__ if self.llm else 'None'}")
+        if hasattr(self.llm, '_is_stub'):
+            logger.warning(f"   ⚠️  Using stub LLM: {self.llm._is_stub}")
+        else:
+            logger.info("   ✅ Using real Azure OpenAI LLM")
+        logger.info(f"   Candidate: {candidate_id}")
+        logger.info(f"   Rubric: {rubric_data.get('rubric_name', 'Unknown')}")
+        logger.info(f"   Content length: {len(document_text)} chars")
+
         consensus_service = ConsensusEvaluationService(llm=self.llm)
 
         result = await consensus_service.evaluate_with_consensus(
