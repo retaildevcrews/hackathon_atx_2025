@@ -1,10 +1,10 @@
-name: Build and Push Workflow
+name: Build and Push Criteria API
 
 on:
   push:
-    branches: [ iac-cicd ]
+    branches: [ main, cicd-to-acr ]
     paths:
-      - 'apps/api/**'
+      - 'apps/criteria_api/**'
 
 permissions:
   id-token: write
@@ -29,8 +29,8 @@ jobs:
       uses: azure/container-apps-deploy-action@v2
       with:
         appSourcePath: ${{ github.workspace }}
-        dockerfilePath: ./apps/api/Dockerfile
-        imageToBuild: ${{ secrets.ACR_NAME }}.azurecr.io/rt-api:latest
+        dockerfilePath: ./apps/criteria_api/Dockerfile
+        imageToBuild: ${{ secrets.ACR_NAME }}.azurecr.io/criteria-api:latest
         acrName: ${{ secrets.ACR_NAME }}
-        containerAppName: ${{ secrets.CONTAINER_APP_NAME }}
+        containerAppName: criteriaapi2025hack
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
