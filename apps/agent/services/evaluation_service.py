@@ -551,10 +551,6 @@ class EvaluationService:
             evaluation_results = []
             for result_dict in individual_results:
                 if "error" not in result_dict:
-                    # Ensure candidate_id is set for compatibility with deterministic analyzer
-                    if "candidate_id" in result_dict and "candidate_id" not in result_dict:
-                        result_dict["candidate_id"] = result_dict["candidate_id"]
-
                     # Convert dict to EvaluationResult for analysis
                     eval_result = EvaluationResult(**result_dict)
                     evaluation_results.append(eval_result)
@@ -568,19 +564,19 @@ class EvaluationService:
             # Step 4: Build batch result
             batch_result = BatchEvaluationResult(
                 rubric_name=rubric_name,
-                total_documents=len(documents),
+                total_candidates=len(documents),
                 individual_results=evaluation_results,
                 comparison_summary=comparison_summary,
                 batch_metadata={
                     "comparison_mode": comparison_mode.value,
                     "ranking_strategy": ranking_strategy.value,
-                    "documents_processed": str(len(evaluation_results)),
-                    "documents_failed": str(len(failed_evaluations)) if failed_evaluations else "0",
+                    "candidates_processed": str(len(evaluation_results)),
+                    "candidates_failed": str(len(failed_evaluations)) if failed_evaluations else "0",
                     "evaluation_model": "langchain-azure-openai" if self.llm else "stub"
                 }
             )
 
-            logger.info(f"Batch evaluation completed successfully for {len(evaluation_results)} documents")
+            logger.info(f"Batch evaluation completed successfully for {len(evaluation_results)} candidates")
             return batch_result.dict()
 
         except Exception as e:

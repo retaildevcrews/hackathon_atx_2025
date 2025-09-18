@@ -15,7 +15,8 @@ from models.invoke import (
     CandidateRanking,
     StatisticalSummary,
     CriteriaAnalysis,
-    RankingStrategy
+    RankingStrategy,
+    ComparisonMode
 )
 
 logger = logging.getLogger(__name__)
@@ -51,15 +52,15 @@ class DeterministicComparison:
         rankings = self._rank_documents(results, ranking_strategy)
 
         # Step 4: Generate insights and recommendations
-        insights = self._generate_cross_document_insights(results, criteria_analysis, statistical_summary)
+        insights = self._generate_cross_candidate_insights(results, criteria_analysis, statistical_summary)
         recommendation_rationale = self._generate_recommendation_rationale(rankings[0], criteria_analysis)
 
         return ComparisonSummary(
-            best_document=rankings[0],
+            best_candidate=rankings[0],
             rankings=rankings,
             statistical_summary=statistical_summary,
             criteria_analysis=criteria_analysis,
-            cross_document_insights=insights,
+            cross_candidate_insights=insights,
             recommendation_rationale=recommendation_rationale,
             analysis_method=ComparisonMode.DETERMINISTIC
         )
@@ -169,7 +170,7 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = DocumentRanking(
+            ranking = CandidateRanking(
                 candidate_id=result.candidate_id or f"document_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
@@ -209,8 +210,8 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = DocumentRanking(
-                candidate_id=result.candidate_id or f"document_{rank}",
+            ranking = CandidateRanking(
+                candidate_id=result.candidate_id or f"candidate_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -251,8 +252,8 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = DocumentRanking(
-                candidate_id=result.candidate_id or f"document_{rank}",
+            ranking = CandidateRanking(
+                candidate_id=result.candidate_id or f"candidate_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -306,8 +307,8 @@ class DeterministicComparison:
 
             score_breakdown = {name: score for name, score in criterion_scores}
 
-            ranking = DocumentRanking(
-                candidate_id=result.candidate_id or f"document_{rank}",
+            ranking = CandidateRanking(
+                candidate_id=result.candidate_id or f"candidate_{rank}",
                 rank=rank,
                 overall_score=result.overall_score,
                 key_strengths=strengths,
@@ -318,20 +319,20 @@ class DeterministicComparison:
 
         return rankings
 
-    def _generate_cross_document_insights(
+    def _generate_cross_candidate_insights(
         self,
         results: List[EvaluationResult],
         criteria_analysis: List[CriteriaAnalysis],
         statistical_summary: StatisticalSummary
     ) -> str:
-        """Generate insights by analyzing patterns across all documents."""
+        """Generate insights by analyzing patterns across all candidates."""
         insights = []
 
         # Overall performance insights
         if statistical_summary.std_deviation < 0.3:
-            insights.append("Documents show very similar performance levels")
+            insights.append("Candidates show very similar performance levels")
         elif statistical_summary.std_deviation > 1.0:
-            insights.append("Significant performance variation between documents")
+            insights.append("Significant performance variation between candidates")
 
         # Criteria-specific insights
         weak_criteria = [c for c in criteria_analysis if c.average_score < 2.5]
@@ -340,11 +341,11 @@ class DeterministicComparison:
 
         if weak_criteria:
             criteria_names = ", ".join([c.criterion_name for c in weak_criteria])
-            insights.append(f"All documents struggle with: {criteria_names}")
+            insights.append(f"All candidates struggle with: {criteria_names}")
 
         if strong_criteria:
             criteria_names = ", ".join([c.criterion_name for c in strong_criteria])
-            insights.append(f"All documents excel at: {criteria_names}")
+            insights.append(f"All candidates excel at: {criteria_names}")
 
         if varied_criteria:
             criteria_names = ", ".join([c.criterion_name for c in varied_criteria])
@@ -356,12 +357,12 @@ class DeterministicComparison:
         low_performers = len([s for s in scores if s <= 2.5])
 
         if high_performers > len(results) * 0.6:
-            insights.append("Most documents meet high quality standards")
+            insights.append("Most candidates meet high quality standards")
         elif low_performers > len(results) * 0.4:
-            insights.append("Many documents need significant improvement")
+            insights.append("Many candidates need significant improvement")
 
         if not insights:
-            insights.append("Documents show typical performance distribution")
+            insights.append("Candidates show typical performance distribution")
 
         return "; ".join(insights)
 
@@ -370,7 +371,7 @@ class DeterministicComparison:
         winner: CandidateRanking,
         criteria_analysis: List[CriteriaAnalysis]
     ) -> str:
-        """Generate explanation for why the top document was recommended."""
+        """Generate explanation for why the top candidate was recommended."""
         reasons = []
 
         # Overall score performance

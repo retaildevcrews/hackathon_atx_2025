@@ -103,7 +103,6 @@ class EvaluationResult(BaseModel):
     """Model for complete evaluation result from agent."""
     overall_score: float = Field(ge=1.0, le=5.0, description="Overall weighted score")
     candidate_id: Optional[str] = None
-    candidate_id: Optional[str] = None  # Alias for candidate_id for analyzer compatibility
     rubric_name: str
     criteria_evaluations: List[CriterionEvaluation]
     summary: str
