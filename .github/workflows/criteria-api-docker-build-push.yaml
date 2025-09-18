@@ -1,0 +1,38 @@
+name: Build and Push Criteria API Image
+
+on:
+  push:
+    branches: [ main, cicd-to-acr ]
+    paths:
+      - 'apps/criteria_api/**'
+      - '.github/workflows/criteria-api-docker-build-push.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Az CLI - ACR login
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/criteria_api
+          file: ./apps/criteria_api/Dockerfile
+          push: true
+          tags: ${{ secrets.ACR_NAME }}.azurecr.io/criteria-api:latest
