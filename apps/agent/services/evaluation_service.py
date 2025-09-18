@@ -17,7 +17,7 @@ from models.invoke import (
     ComparisonMode,
     RankingStrategy
 )
-from services.criteria_bridge import CriteriaAPIBridge, get_criteria_api_bridge
+# Direct criteria API calls - no bridge needed
 from services.search_service import AzureSearchService
 from services.deterministic_analyzer import DeterministicComparison, get_deterministic_analyzer
 from prompts.evaluation_prompts import get_batch_evaluation_template, get_summary_template
@@ -31,7 +31,6 @@ class EvaluationService:
 
     def __init__(
         self,
-        criteria_bridge: CriteriaAPIBridge,
         search_service: AzureSearchService,
         deterministic_analyzer: Optional[DeterministicComparison] = None,
         llm: Optional[Any] = None
@@ -39,15 +38,17 @@ class EvaluationService:
         """Initialize evaluation service.
 
         Args:
-            criteria_bridge: Bridge service for criteria_api integration
             search_service: Azure Search service for document chunks
             deterministic_analyzer: Deterministic comparison analyzer
             llm: LangChain LLM instance (will create if None)
         """
-        self.criteria_bridge = criteria_bridge
+        # Initialize settings first
+        self.settings = get_settings()
+        
+        # Direct criteria API calls
+        self.criteria_api_url = self.settings.criteria_api_url.rstrip("/")
         self.search_service = search_service
         self.deterministic_analyzer = deterministic_analyzer or get_deterministic_analyzer()
-        self.settings = get_settings()
 
         # Initialize LLM if not provided
         if llm is None:
@@ -58,6 +59,46 @@ class EvaluationService:
         # Get prompt templates
         self.batch_evaluation_template = get_batch_evaluation_template()
         self.summary_template = get_summary_template()
+
+    async def _get_rubric_direct(self, rubric_id: str) -> Optional[Dict[str, Any]]:
+        """Get rubric directly from criteria API.
+        
+        Args:
+            rubric_id: ID of the rubric
+            
+        Returns:
+            Rubric data or None if not found
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(f"{self.criteria_api_url}/rubrics/{rubric_id}")
+                
+                if response.status_code == 404:
+                    return None
+                    
+                response.raise_for_status()
+                rubric_data = response.json()
+                
+                # Transform to evaluation format (simplified)
+                return {
+                    "rubric_id": rubric_data["id"],
+                    "rubric_name": rubric_data["name"],
+                    "description": rubric_data["description"],
+                    "criteria": [
+                        {
+                            "criterion_id": criterion["criteriaId"],
+                            "name": criterion["name"],
+                            "description": criterion["description"],
+                            "definition": criterion["definition"],
+                            "weight": criterion["weight"]
+                        }
+                        for criterion in rubric_data["criteria"]
+                    ]
+                }
+                
+        except Exception as e:
+            logger.error(f"Error fetching rubric '{rubric_id}' directly: {e}")
+            return None
 
     def _create_llm(self) -> Any:
         """Create LangChain LLM instance."""
@@ -219,9 +260,9 @@ class EvaluationService:
             if len(candidate_ids) != len(set(candidate_ids)):
                 return {"error": "Candidate IDs must be unique"}
 
-            # Fetch rubric data
+            # Fetch rubric data directly from criteria API
             logger.info(f"Fetching rubric data for rubric_id: {rubric_id}")
-            rubric_data = await self.criteria_bridge.get_rubric(rubric_id)
+            rubric_data = await self._get_rubric_direct(rubric_id)
             if not rubric_data:
                 return {"error": f"Rubric '{rubric_id}' not found"}
 
@@ -336,7 +377,7 @@ class EvaluationService:
         """
         try:
             # Step 1: Load rubric from criteria_api
-            rubric_data = await self.criteria_bridge.get_rubric(rubric_name)
+            rubric_data = await self._get_rubric_direct(rubric_name)
             if not rubric_data:
                 return {
                     "error": f"Rubric '{rubric_name}' not found",
@@ -743,14 +784,34 @@ class EvaluationService:
 
     async def list_rubrics(self) -> List[Dict[str, Any]]:
         """List available rubrics from criteria_api."""
-        return await self.criteria_bridge.list_rubrics()
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(f"{self.criteria_api_url}/rubrics/")
+                response.raise_for_status()
+                rubrics = response.json()
+
+                # Transform to simple list format
+                return [
+                    {
+                        "rubric_name": rubric["name"],
+                        "rubric_id": rubric["id"],
+                        "domain": "General",  # criteria_api doesn't have domain field
+                        "version": rubric["version"],
+                        "description": rubric["description"],
+                        "published": rubric["published"],
+                        "created_at": rubric["createdAt"]
+                    }
+                    for rubric in rubrics
+                ]
+        except Exception as e:
+            logger.error(f"Error listing rubrics: {e}")
+            return []
 
 
 @lru_cache(maxsize=1)
 def get_evaluation_service() -> EvaluationService:
     """Get singleton evaluation service instance."""
-    criteria_bridge = get_criteria_api_bridge()
     search_service = AzureSearchService()
     deterministic_analyzer = get_deterministic_analyzer()
 
-    return EvaluationService(criteria_bridge, search_service, deterministic_analyzer)
+    return EvaluationService(search_service, deterministic_analyzer)
