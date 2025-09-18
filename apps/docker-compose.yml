@@ -15,8 +15,12 @@ services:
     container_name: agent
     env_file:
       - ./agent/.env
+    environment:
+      - CRITERIA_API_URL=http://criteria_api:8000
     ports:
       - "8001:8001"
+    depends_on:
+      - criteria_api
   webapp:
     build: ./webapp
     container_name: rubricx_webapp

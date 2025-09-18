@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -23,6 +23,15 @@ export const AppLayout: React.FC = () => {
 
   const handleDrawerClose = () => {
     setDrawerOpen(false);
+  };
+
+  // Focus management: focus main content after drawer closes for a11y
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const handleDrawerClosedFocusMain = () => {
+    // Slight delay to allow drawer unmount/transition
+    requestAnimationFrame(() => {
+      mainRef.current?.focus();
+    });
   };
 
   return (
@@ -73,10 +82,14 @@ export const AppLayout: React.FC = () => {
       <NavigationDrawer
         open={drawerOpen}
         onClose={handleDrawerClose}
+        onClosed={handleDrawerClosedFocusMain}
       />
 
       <Box
         component="main"
+        ref={mainRef}
+        tabIndex={-1}
+        aria-label="Main content"
         sx={{
           flexGrow: 1,
           // Content no longer shifts when drawer opens; overlay behavior retains left alignment

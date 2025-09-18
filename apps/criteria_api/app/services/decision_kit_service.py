@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from app.utils.db import SessionLocal
 from app.models.decision_kit import (
-    DecisionKitCreate, DecisionKit, DecisionKitCandidateRef, DecisionKitUpdateCandidates
+    DecisionKitCreate, DecisionKit, DecisionKitCandidateRef, DecisionKitUpdateCandidates, DecisionKitPatch
 )
 from app.models.decision_kit_orm import DecisionKitORM, DecisionKitCandidateORM
 from app.models.candidate_orm import CandidateORM
@@ -236,5 +236,55 @@ def delete_decision_kit(kit_id: str) -> bool:
         db.delete(kit)
         db.commit()
         return True
+    finally:
+        db.close()
+
+
+def patch_decision_kit(kit_id: str, data: DecisionKitPatch) -> Optional[DecisionKit]:
+    db = SessionLocal()
+    try:
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
+        if not kit:
+            return None
+
+        changed = False
+        # Update name if provided
+        if data.name is not None and data.name != kit.name_original:
+            norm = _normalize_name(data.name)
+            # check uniqueness
+            exists = db.query(DecisionKitORM.id).filter(DecisionKitORM.name_normalized == norm, DecisionKitORM.id != kit_id).first()
+            if exists:
+                raise ValueError("decision kit name exists")
+            kit.name_original = data.name
+            kit.name_normalized = norm
+            changed = True
+
+        # Update description if provided
+        if data.description is not None and data.description != kit.description:
+            kit.description = data.description
+            changed = True
+
+        # Update rubric snapshot if rubricId provided
+        if data.rubricId is not None and data.rubricId != kit.rubric_id:
+            rubric = db.query(RubricORM).filter(RubricORM.id == data.rubricId).first()
+            if not rubric:
+                raise ValueError("invalid rubric id")
+            kit.rubric_id = rubric.id
+            kit.rubric_version = rubric.version
+            kit.rubric_published = rubric.published
+            changed = True
+
+        if changed:
+            kit.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(kit)
+
+        # Re-fetch with relationships for serialization
+        kit = db.query(DecisionKitORM).options(
+            joinedload(DecisionKitORM.candidates_assoc).joinedload(DecisionKitCandidateORM.candidate)
+        ).filter(DecisionKitORM.id == kit_id).first()
+        return _serialize(kit)
     finally:
         db.close()

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from app.models.decision_kit import (
-    DecisionKit, DecisionKitCreate, DecisionKitUpdateCandidates
+    DecisionKit, DecisionKitCreate, DecisionKitUpdateCandidates, DecisionKitPatch
 )
 from app.services import decision_kit_service
 
@@ -57,3 +57,19 @@ def delete_kit(kit_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="Decision Kit not found")
     return None
+
+
+@router.patch("/{kit_id}", response_model=DecisionKit)
+def patch_kit(kit_id: str, payload: DecisionKitPatch):
+    try:
+        kit = decision_kit_service.patch_decision_kit(kit_id, payload)
+    except ValueError as e:
+        msg = str(e)
+        if "exists" in msg:
+            raise HTTPException(status_code=409, detail="Decision Kit name exists")
+        if "invalid rubric id" in msg:
+            raise HTTPException(status_code=422, detail="Invalid rubric id")
+        raise HTTPException(status_code=400, detail=msg)
+    if not kit:
+        raise HTTPException(status_code=404, detail="Decision Kit not found")
+    return kit
