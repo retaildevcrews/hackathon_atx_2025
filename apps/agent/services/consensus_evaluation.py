@@ -740,13 +740,31 @@ Be diplomatic but advocate for a more balanced view.
             # Extract or generate scores based on LLM content
             criteria_scores = {}
             detailed_reasoning = {}
-            
-            # Use the actual LLM response as the overall reasoning
+
+            # Use the actual LLM response as the overall reasoning, cleaned up
             overall_reasoning = llm_response.strip()
+            
+            # Clean up formatting: convert newlines to proper spacing
+            overall_reasoning = overall_reasoning.replace('\n', ' ').replace('\\n', ' ')
+            overall_reasoning = ' '.join(overall_reasoning.split())  # Remove extra whitespace
+            
+            # Limit length more gracefully without cutting off mid-sentence
+            if len(overall_reasoning) > 1500:
+                # Find the last complete sentence within 1500 characters
+                truncated = overall_reasoning[:1500]
+                last_period = truncated.rfind('.')
+                last_exclamation = truncated.rfind('!')
+                last_question = truncated.rfind('?')
+                last_sentence_end = max(last_period, last_exclamation, last_question)
+                
+                if last_sentence_end > 800:  # Only truncate if we have a reasonable amount of content
+                    overall_reasoning = overall_reasoning[:last_sentence_end + 1]
+                else:
+                    overall_reasoning = overall_reasoning[:1500].rstrip() + "..."
 
             for criterion in rubric_data.get('criteria', []):
                 criterion_name = criterion['name']
-                
+
                 # Try to extract scores from the LLM response
                 # Look for patterns like "Score: 3" or "Rating: 4/5" etc.
                 import re
@@ -756,7 +774,7 @@ Be diplomatic but advocate for a more balanced view.
                     rf"{criterion_name}.*?(\d+(?:\.\d+)?)/5",
                     rf"(\d+(?:\.\d+)?)\s*-\s*{criterion_name}",
                 ]
-                
+
                 extracted_score = None
                 for pattern in score_patterns:
                     match = re.search(pattern, llm_response, re.IGNORECASE)
@@ -767,22 +785,22 @@ Be diplomatic but advocate for a more balanced view.
                                 break
                         except (ValueError, IndexError):
                             continue
-                
+
                 # If no score found, generate based on agent bias and response sentiment
                 if extracted_score is None:
                     base_score = 2.5
-                    
+
                     # Analyze sentiment in the response for this criterion
                     criterion_text = ""
                     criterion_start = llm_response.lower().find(criterion_name.lower())
                     if criterion_start != -1:
                         # Extract text around this criterion (next 200 chars)
                         criterion_text = llm_response[criterion_start:criterion_start + 200]
-                    
+
                     # Look for positive/negative indicators
                     positive_indicators = ['excellent', 'strong', 'good', 'impressive', 'solid', 'effective', 'demonstrates']
                     negative_indicators = ['weak', 'poor', 'lacking', 'insufficient', 'limited', 'gaps', 'missing']
-                    
+
                     sentiment_adjustment = 0
                     for word in positive_indicators:
                         if word in criterion_text.lower():
@@ -790,17 +808,17 @@ Be diplomatic but advocate for a more balanced view.
                     for word in negative_indicators:
                         if word in criterion_text.lower():
                             sentiment_adjustment -= 0.3
-                    
+
                     # Apply agent bias
                     if agent_role == AgentRole.STRICT_EVALUATOR:
                         score = max(1.0, base_score - 0.4 + sentiment_adjustment)
                     else:
                         score = min(5.0, base_score + 0.4 + sentiment_adjustment)
-                        
+
                     extracted_score = round(score, 2)
-                
+
                 criteria_scores[criterion_name] = extracted_score
-                
+
                 # Extract reasoning for this criterion from the LLM response
                 criterion_reasoning = f"Based on {agent_role.value} evaluation"
                 criterion_start = llm_response.lower().find(criterion_name.lower())
@@ -812,12 +830,28 @@ Be diplomatic but advocate for a more balanced view.
                             other_start = llm_response.lower().find(other_criterion['name'].lower(), criterion_start + 1)
                             if other_start != -1 and other_start < next_criterion_start:
                                 next_criterion_start = other_start
-                    
+
                     # Extract the reasoning for this specific criterion
                     criterion_reasoning = llm_response[criterion_start:next_criterion_start].strip()
-                    if len(criterion_reasoning) > 500:
-                        criterion_reasoning = criterion_reasoning[:500] + "..."
-                
+                    
+                    # Clean up formatting: convert newlines to spaces and limit length more gracefully
+                    criterion_reasoning = criterion_reasoning.replace('\n', ' ').replace('\\n', ' ')
+                    criterion_reasoning = ' '.join(criterion_reasoning.split())  # Remove extra whitespace
+                    
+                    # Limit length more gracefully without cutting off mid-sentence
+                    if len(criterion_reasoning) > 800:
+                        # Find the last complete sentence within 800 characters
+                        truncated = criterion_reasoning[:800]
+                        last_period = truncated.rfind('.')
+                        last_exclamation = truncated.rfind('!')
+                        last_question = truncated.rfind('?')
+                        last_sentence_end = max(last_period, last_exclamation, last_question)
+                        
+                        if last_sentence_end > 400:  # Only truncate if we have a reasonable amount of content
+                            criterion_reasoning = criterion_reasoning[:last_sentence_end + 1]
+                        else:
+                            criterion_reasoning = criterion_reasoning[:800].rstrip() + "..."
+
                 detailed_reasoning[criterion_name] = criterion_reasoning
 
             # Calculate weighted overall score
@@ -833,7 +867,7 @@ Be diplomatic but advocate for a more balanced view.
                 agent_role=agent_role,
                 overall_score=overall_score,
                 criteria_scores=criteria_scores,
-                reasoning=overall_reasoning[:1000] + "..." if len(overall_reasoning) > 1000 else overall_reasoning,
+                reasoning=overall_reasoning,  # Already cleaned and length-limited above
                 detailed_criteria_reasoning=detailed_reasoning,
                 evidence=[f"Analysis from {agent_role.value} agent: {llm_response[:200]}..."],
                 confidence=0.85,
