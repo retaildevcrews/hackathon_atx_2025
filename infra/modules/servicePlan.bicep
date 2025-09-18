@@ -7,6 +7,9 @@ param skuName string = 'B1'
 @description('Tags object')
 param tags object = {}
 
+// NOTE: Linux App Service does NOT support Free (F1) or Shared (D1) tiers.
+// If you pass F1 or D1 here deployment will fail. B1 is the lowest-cost Linux option.
+
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: name
   location: location

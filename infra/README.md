@@ -28,7 +28,7 @@ Why? System-assigned identity object IDs are only known after resource creationâ
 | logLevel | no | INFO | Log level passed to apps |
 | webPlanSku | no | B1 | App Service Plan SKU |
 | namePrefix | no | atxhack2025 | Naming prefix (ai, plan, web, func appended) |
-| azureWebJobsStorage | yes | | Connection string for Functions runtime storage usage |
+| (removed) azureWebJobsStorage | NO LONGER USED | | Replaced by managed identity + hierarchical settings (AzureWebJobsStorage__*) |
 | functionPrincipalId | no | '' | Provided on second pass for role assignment |
 | webPrincipalId | no | '' | Provided on second pass for role assignment |
 
@@ -50,10 +50,28 @@ Why? System-assigned identity object IDs are only known after resource creationâ
   "parameters": {
     "location": { "value": "eastus2" },
     "storageAccountName": { "value": "decisionkitstorage" },
-    "internalUploadKeySha256": { "value": "<hex>" },
-    "azureWebJobsStorage": { "value": "<connection-string>" }
+    "internalUploadKeySha256": { "value": "<hex>" }
   }
 }
+```
+
+### Identity-Based Host Storage
+The Function App no longer accepts a `azureWebJobsStorage` connection string. Instead it sets hierarchical settings so the runtime uses Managed Identity:
+
+App Settings applied:
+```
+AzureWebJobsStorage__accountName = <storageAccountName>
+AzureWebJobsStorage__blobServiceUri = https://<account>.blob.<dnsSuffix>
+AzureWebJobsStorage__queueServiceUri = https://<account>.queue.<dnsSuffix>
+AzureWebJobsStorage__credential = ManagedIdentity
+```
+Required Role Assignments (granted in second pass):
+* Storage Blob Data Contributor
+* Storage Queue Data Contributor
+
+If you add Tables in future, include:
+```
+AzureWebJobsStorage__tableServiceUri = https://<account>.table.<dnsSuffix>
 ```
 
 ## Deploy (First Pass)
@@ -104,7 +122,8 @@ pwsh ./infra/scripts/smoke-upload.ps1 -FunctionUrl https://<func>.azurewebsites.
 Outputs status and JSON response. Omit `-Secret` ONLY if bypass mode enabled (unsafe for shared envs).
 
 ### Propagation Note
-Role assignments may take up to ~60s to grant blob access. If initial upload returns 403, wait and retry.
+Role assignments may take up to ~60s to grant blob & queue access. If initial upload returns 403 on host logs (lease acquisition) or function invocation, wait and retry. The host lock error:
+`failed to acquire host lock lease: Status: 403` indicates the queue permission (Storage Queue Data Contributor) or hierarchical settings were not yet applied/propagated.
 
 - Cross-RG existing storage: would require a separate subscription-scope or RG module approach.
 - Key Vault: move `INTERNAL_UPLOAD_KEY_SHA256` & connection strings to secrets.

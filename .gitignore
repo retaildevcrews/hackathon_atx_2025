@@ -209,3 +209,4 @@ __marimo__/
 #node
 node_modules/
 apps/webapp/node_modules
+infra/scripts/*.zip

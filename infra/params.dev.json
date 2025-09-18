@@ -4,7 +4,6 @@
   "parameters": {
     "location": { "value": "eastus2" },
     "storageAccountName": { "value": "decisionkitstorage" },
-    "internalUploadKeySha256": { "value": "noob" },
-    "azureWebJobsStorage": { "value": "https://decisionkitstorage.blob.core.windows.net/" }
+  "internalUploadKeySha256": { "value": "noob" }
   }
 }
