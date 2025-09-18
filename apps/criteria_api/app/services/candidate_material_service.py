@@ -1,5 +1,6 @@
 import uuid
 from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.identity import DefaultAzureCredential
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import UploadFile
@@ -33,14 +34,15 @@ def _pseudo_save_blob(
     If the connection string is not configured, this function will log a warning and
     return without raising to preserve existing behavior for local development.
     """
-    conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
+    # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
+    credential = DefaultAzureCredential()
     container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "raw-docs")
-    if not conn_str:
-        logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob upload for %s", blob_path)
-        return
+    # if not conn_str:
+    #     logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob upload for %s", blob_path)
+    #     return
 
     try:
-        service = BlobServiceClient.from_connection_string(conn_str)
+        service = BlobServiceClient(account_url="https://decisionkitstorage.blob.core.windows.net/", credential=credential)
         blob_client = service.get_blob_client(container=container, blob=blob_path)
         content_type, _ = mimetypes.guess_type(blob_path)
         content_settings = ContentSettings(content_type=content_type or "application/octet-stream")
@@ -115,7 +117,7 @@ def create_material(candidate_id: str, file: UploadFile) -> CandidateMaterial:
     material_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     blob_path = _pseudo_blob_path(candidate_id, material_id, file.filename)
-    _pseudo_save_blob(blob_path, data)
+    _pseudo_save_blob(blob_path, data, candidate_id, material_id)
     db = SessionLocal()
     orm = CandidateMaterialORM(
         id=material_id,

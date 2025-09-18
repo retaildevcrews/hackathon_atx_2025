@@ -7,6 +7,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
+azure-storage-blob="^12.26.0"
+azure-identity="^1.25.0"
 fastapi = "^0.110.0"
 azure-cosmos = "^4.6.0"
 uvicorn = "^0.29.0"
