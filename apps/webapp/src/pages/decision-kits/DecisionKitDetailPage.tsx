@@ -78,8 +78,8 @@ export const DecisionKitDetailPage: React.FC = () => {
 
   return (
     <Box>
-      <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <Box flex={1} mr={2}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'nowrap' }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
           <TextField
             label="Decision Kit Name"
             value={nameValue}
@@ -91,10 +91,11 @@ export const DecisionKitDetailPage: React.FC = () => {
             }}
             fullWidth
             error={!!nameError}
-            helperText={nameError || ' '}
+            helperText={nameError || ''}
+            FormHelperTextProps={{ sx: { minHeight: nameError ? undefined : 0, m: nameError ? '3px 14px 0 14px' : 0 } }}
           />
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
           <Button
             size="small"
             variant="contained"
