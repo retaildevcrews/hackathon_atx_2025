@@ -27,19 +27,13 @@ def _pseudo_save_blob(
     """Upload file bytes to Azure Blob Storage if configured.
 
     Environment variables:
-      - AZURE_STORAGE_CONNECTION_STRING: Azure Storage connection string (preferred)
-      - STORAGE_CONN_STRING: legacy alternate name
       - CANDIDATE_MATERIALS_CONTAINER: target container name (defaults to 'raw-docs')
 
     If the connection string is not configured, this function will log a warning and
     return without raising to preserve existing behavior for local development.
     """
-    # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
     credential = DefaultAzureCredential()
     container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "docs")
-    # if not conn_str:
-    #     logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob upload for %s", blob_path)
-    #     return
 
     try:
         service = BlobServiceClient(account_url="https://decisionkitstorage.blob.core.windows.net/", credential=credential)
