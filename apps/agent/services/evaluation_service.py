@@ -44,7 +44,7 @@ class EvaluationService:
         """
         # Initialize settings first
         self.settings = get_settings()
-        
+
         # Direct criteria API calls
         self.criteria_api_url = self.settings.criteria_api_url.rstrip("/")
         self.search_service = search_service
@@ -62,23 +62,23 @@ class EvaluationService:
 
     async def _get_rubric_direct(self, rubric_id: str) -> Optional[Dict[str, Any]]:
         """Get rubric directly from criteria API.
-        
+
         Args:
             rubric_id: ID of the rubric
-            
+
         Returns:
             Rubric data or None if not found
         """
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(f"{self.criteria_api_url}/rubrics/{rubric_id}")
-                
+
                 if response.status_code == 404:
                     return None
-                    
+
                 response.raise_for_status()
                 rubric_data = response.json()
-                
+
                 # Transform to evaluation format (simplified)
                 return {
                     "rubric_id": rubric_data["id"],
@@ -95,7 +95,7 @@ class EvaluationService:
                         for criterion in rubric_data["criteria"]
                     ]
                 }
-                
+
         except Exception as e:
             logger.error(f"Error fetching rubric '{rubric_id}' directly: {e}")
             return None
@@ -811,7 +811,18 @@ class EvaluationService:
 @lru_cache(maxsize=1)
 def get_evaluation_service() -> EvaluationService:
     """Get singleton evaluation service instance."""
-    search_service = AzureSearchService()
+    from config import get_settings
+    settings = get_settings()
+
+    # Use local search service if enabled, otherwise use Azure Search
+    if settings.use_local_search:
+        from services.local_search_service import LocalSearchService
+        search_service = LocalSearchService()
+        logger.info("Using LOCAL SEARCH SERVICE for testing/development")
+    else:
+        search_service = AzureSearchService()
+        logger.info("Using AZURE SEARCH SERVICE for production")
+
     deterministic_analyzer = get_deterministic_analyzer()
 
     return EvaluationService(search_service, deterministic_analyzer)
