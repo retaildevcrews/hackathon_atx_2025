@@ -148,7 +148,7 @@ async def get_rubric_details(
         Rubric details with criteria and scoring information
     """
     try:
-        rubric_data = await evaluation_service.criteria_bridge.get_rubric(rubric_id)
+        rubric_data = await evaluation_service._get_rubric_direct(rubric_id)
 
         if not rubric_data:
             raise HTTPException(
