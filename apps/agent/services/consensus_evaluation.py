@@ -95,7 +95,7 @@ class ConsensusEvaluationService:
             # Check if agents agree (within tolerance)
             if self._agents_agree(round_1.strict_evaluation, round_1.generous_evaluation):
                 logger.info("Agents reached initial agreement, skipping debate")
-                return self._create_consensus_result(round_1)
+                return self._create_consensus_result(round_1, rubric_data)
 
             # Conduct debate rounds
             current_round = round_1
@@ -113,7 +113,7 @@ class ConsensusEvaluationService:
                     break
 
             # Create final consensus
-            final_result = self._create_consensus_result(current_round)
+            final_result = self._create_consensus_result(current_round, rubric_data)
             final_result["debate_history"] = self._summarize_debate()
 
             # Debug: Log the final result structure
@@ -473,7 +473,7 @@ Be diplomatic but advocate for a more balanced view.
         score_diff = abs(strict_eval.overall_score - generous_eval.overall_score)
         return score_diff <= tolerance
 
-    def _create_consensus_result(self, final_round: DebateRound) -> Dict[str, Any]:
+    def _create_consensus_result(self, final_round: DebateRound, rubric_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create final consensus result from debate."""
 
         strict_eval = final_round.strict_evaluation
@@ -487,28 +487,55 @@ Be diplomatic but advocate for a more balanced view.
         generous_weight = 0.4
 
         consensus_scores = {}
+        criteria_evaluations = []
+
+        # Create a mapping of criterion names to criterion data from rubric
+        criteria_map = {c.get('name', 'Unknown'): c for c in rubric_data.get('criteria', [])}
+
         for criterion in strict_eval.criteria_scores.keys():
             strict_score = strict_eval.criteria_scores.get(criterion, 0)
             generous_score = generous_eval.criteria_scores.get(criterion, 0)
             consensus_score = (strict_score * strict_weight + generous_score * generous_weight)
             consensus_scores[criterion] = round(consensus_score, 2)
 
+            # Get criterion details from rubric data
+            criterion_data = criteria_map.get(criterion, {})
+
+            criteria_evaluations.append({
+                "criterion_name": criterion,
+                "criterion_description": criterion_data.get('description', f'{criterion} evaluation'),
+                "weight": float(criterion_data.get('weight', 1.0)),
+                "score": consensus_score,
+                "reasoning": f"Consensus between strict ({strict_eval.criteria_scores[criterion]:.1f}) and generous ({generous_eval.criteria_scores[criterion]:.1f}) evaluations",
+                "evidence": [f"Evaluated through multi-agent consensus process"],
+                "agent_a_reasoning": strict_eval.detailed_criteria_reasoning.get(criterion, "No detailed reasoning available"),
+                "agent_b_reasoning": generous_eval.detailed_criteria_reasoning.get(criterion, "No detailed reasoning available")
+            })
+
         final_score = sum(consensus_scores.values()) / len(consensus_scores)
+
+        # Generate strengths and improvements based on scores
+        strengths = []
+        improvements = []
+
+        for criterion, score in consensus_scores.items():
+            if score >= 3.5:
+                strengths.append(f"Strong performance in {criterion} (score: {score:.1f})")
+            elif score < 2.5:
+                improvements.append(f"Improvement needed in {criterion} (score: {score:.1f})")
+
+        # Ensure we have at least some content for strengths and improvements
+        if not strengths:
+            strengths.append("Consensus evaluation identified areas of competency")
+        if not improvements:
+            improvements.append("Continue building on current capabilities")
 
         return {
             "overall_score": round(final_score, 2),
-            "criteria_evaluations": [
-                {
-                    "criterion_name": criterion,
-                    "score": score,
-                    "reasoning": f"Consensus between strict ({strict_eval.criteria_scores[criterion]:.1f}) and generous ({generous_eval.criteria_scores[criterion]:.1f}) evaluations",
-                    "evidence": [f"Evaluated through multi-agent consensus process"],
-                    "agent_a_reasoning": strict_eval.detailed_criteria_reasoning.get(criterion, "No detailed reasoning available"),
-                    "agent_b_reasoning": generous_eval.detailed_criteria_reasoning.get(criterion, "No detailed reasoning available")
-                }
-                for criterion, score in consensus_scores.items()
-            ],
+            "criteria_evaluations": criteria_evaluations,
             "summary": f"Multi-agent consensus evaluation completed with {len(self.debate_rounds)} rounds. Final score represents balanced assessment between strict and generous evaluators.",
+            "strengths": strengths,
+            "improvements": improvements,
             "consensus_metadata": {
                 "rounds_conducted": len(self.debate_rounds),
                 "strict_final_score": strict_eval.overall_score,
