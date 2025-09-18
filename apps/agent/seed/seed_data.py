@@ -135,3 +135,301 @@ CERTIFICATIONS
         "decision_kit_id": "test-decision-kit-1"
     }
 }
+
+# Additional candidates mirroring criteria_api seed decision kits
+MOCK_CANDIDATES.update({
+    # TV Evaluation
+    "Candidate-TV-LG-OLED-C3-55": {
+        "id": "tv-lg-oled-c3-55",
+        "candidate_id": "Candidate-TV-LG-OLED-C3-55",
+        "title": "LG OLED C3 55\"",
+        "name": "LG OLED C3 55\"",
+        "content": "LG C3 OLED: Excellent contrast, perfect blacks, wide color gamut. Great for movies and gaming.",
+        "decision_kit_id": "tv-evaluation"
+    },
+    "Candidate-TV-SAMSUNG-QN90C-55": {
+        "id": "tv-samsung-qn90c-55",
+        "candidate_id": "Candidate-TV-SAMSUNG-QN90C-55",
+        "title": "Samsung QN90C 55\"",
+        "name": "Samsung QN90C 55\"",
+        "content": "Samsung QN90C: Mini-LED peak brightness, strong HDR highlights, excellent anti-reflective screen.",
+        "decision_kit_id": "tv-evaluation"
+    },
+    "Candidate-TV-SONY-BRAVIA-XR-A80L": {
+        "id": "tv-sony-bravia-xr-a80l",
+        "candidate_id": "Candidate-TV-SONY-BRAVIA-XR-A80L",
+        "title": "Sony Bravia XR A80L",
+        "name": "Sony Bravia XR A80L",
+        "content": "Sony A80L: Strong motion handling and upscaling with Cognitive Processor XR; excellent cinematic image.",
+        "decision_kit_id": "tv-evaluation"
+    },
+
+    # Grant Proposal Review
+    "Candidate-GRANT-URBAN-AIR-QUALITY-SENSORS": {
+        "id": "grant-urban-air-quality-sensors",
+        "candidate_id": "Candidate-GRANT-URBAN-AIR-QUALITY-SENSORS",
+        "title": "Urban Air Quality Sensors",
+        "name": "Urban Air Quality Sensors",
+        "content": "Low-cost mesh sensor network proposal to monitor urban air quality across neighborhoods.",
+        "decision_kit_id": "grant-proposal-review"
+    },
+    "Candidate-GRANT-FOOD-WASTE-ANALYTICS-PLATFORM": {
+        "id": "grant-food-waste-analytics-platform",
+        "candidate_id": "Candidate-GRANT-FOOD-WASTE-ANALYTICS-PLATFORM",
+        "title": "Food Waste Analytics Platform",
+        "name": "Food Waste Analytics Platform",
+        "content": "Analytics platform targeting hospitality industry waste reduction with actionable insights.",
+        "decision_kit_id": "grant-proposal-review"
+    },
+    "Candidate-GRANT-STEM-OUTREACH-MOBILE-LAB": {
+        "id": "grant-stem-outreach-mobile-lab",
+        "candidate_id": "Candidate-GRANT-STEM-OUTREACH-MOBILE-LAB",
+        "title": "STEM Outreach Mobile Lab",
+        "name": "STEM Outreach Mobile Lab",
+        "content": "Mobile laboratory initiative to bring STEM education to rural areas.",
+        "decision_kit_id": "grant-proposal-review"
+    },
+
+    # Classroom Project Assessment
+    "Candidate-CLASSROOM-SMART-CAMPUS-NAVIGATOR": {
+        "id": "classroom-smart-campus-navigator",
+        "candidate_id": "Candidate-CLASSROOM-SMART-CAMPUS-NAVIGATOR",
+        "title": "Smart Campus Navigator",
+        "name": "Smart Campus Navigator",
+        "content": "Indoor routing mobile app for campus navigation using beacons and maps.",
+        "decision_kit_id": "classroom-project-assessment"
+    },
+    "Candidate-CLASSROOM-MEAL-PLAN-OPTIMIZER": {
+        "id": "classroom-meal-plan-optimizer",
+        "candidate_id": "Candidate-CLASSROOM-MEAL-PLAN-OPTIMIZER",
+        "title": "Meal Plan Optimizer",
+        "name": "Meal Plan Optimizer",
+        "content": "Optimization tool balancing nutrition and cost for student meal plans.",
+        "decision_kit_id": "classroom-project-assessment"
+    },
+    "Candidate-CLASSROOM-ADAPTIVE-STUDY-SCHEDULER": {
+        "id": "classroom-adaptive-study-scheduler",
+        "candidate_id": "Candidate-CLASSROOM-ADAPTIVE-STUDY-SCHEDULER",
+        "title": "Adaptive Study Scheduler",
+        "name": "Adaptive Study Scheduler",
+        "content": "Personalized study scheduling app adapting to performance and availability.",
+        "decision_kit_id": "classroom-project-assessment"
+    },
+
+    # Startup Pitch Scoring
+    "Candidate-PITCH-LOOPCART": {
+        "id": "pitch-loopcart",
+        "candidate_id": "Candidate-PITCH-LOOPCART",
+        "title": "LoopCart",
+        "name": "LoopCart",
+        "content": "Circular packaging logistics startup focused on reusable containers.",
+        "decision_kit_id": "startup-pitch-scoring"
+    },
+    "Candidate-PITCH-SYNTHEDGE": {
+        "id": "pitch-synthedge",
+        "candidate_id": "Candidate-PITCH-SYNTHEDGE",
+        "title": "SynthEdge",
+        "name": "SynthEdge",
+        "content": "Edge AI model compression technology improving inference efficiency.",
+        "decision_kit_id": "startup-pitch-scoring"
+    },
+    "Candidate-PITCH-FARMTRACE": {
+        "id": "pitch-farmtrace",
+        "candidate_id": "Candidate-PITCH-FARMTRACE",
+        "title": "FarmTrace",
+        "name": "FarmTrace",
+        "content": "Soil carbon monitoring platform for regenerative agriculture.",
+        "decision_kit_id": "startup-pitch-scoring"
+    },
+
+    # Compliance Readiness Assessment
+    "Candidate-COMPLIANCE-ACCOUNTING-SYSTEM-CONTROLS": {
+        "id": "compliance-accounting-system-controls",
+        "candidate_id": "Candidate-COMPLIANCE-ACCOUNTING-SYSTEM-CONTROLS",
+        "title": "Accounting System Controls",
+        "name": "Accounting System Controls",
+        "content": "Evaluation of financial process controls for audit readiness.",
+        "decision_kit_id": "compliance-readiness"
+    },
+    "Candidate-COMPLIANCE-ACCESS-GOVERNANCE": {
+        "id": "compliance-access-governance",
+        "candidate_id": "Candidate-COMPLIANCE-ACCESS-GOVERNANCE",
+        "title": "Access Governance",
+        "name": "Access Governance",
+        "content": "Joiner/mover/leaver access review and governance program.",
+        "decision_kit_id": "compliance-readiness"
+    },
+    "Candidate-COMPLIANCE-INCIDENT-RESPONSE-PROGRAM": {
+        "id": "compliance-incident-response-program",
+        "candidate_id": "Candidate-COMPLIANCE-INCIDENT-RESPONSE-PROGRAM",
+        "title": "Incident Response Program",
+        "name": "Incident Response Program",
+        "content": "Playbooks, metrics, and response procedures for incidents.",
+        "decision_kit_id": "compliance-readiness"
+    },
+
+    # Open Source Project Triage
+    "Candidate-OSS-MESHGRAPHQL": {
+        "id": "oss-meshgraphql",
+        "candidate_id": "Candidate-OSS-MESHGRAPHQL",
+        "title": "MeshGraphQL",
+        "name": "MeshGraphQL",
+        "content": "Federated graph router project targeting multi-source APIs.",
+        "decision_kit_id": "oss-project-triage"
+    },
+    "Candidate-OSS-LOGSTREAMX": {
+        "id": "oss-logstreamx",
+        "candidate_id": "Candidate-OSS-LOGSTREAMX",
+        "title": "LogStreamX",
+        "name": "LogStreamX",
+        "content": "Streaming log pipeline for high-throughput observability.",
+        "decision_kit_id": "oss-project-triage"
+    },
+    "Candidate-OSS-AUTOSCALERLITE": {
+        "id": "oss-autoscalerlite",
+        "candidate_id": "Candidate-OSS-AUTOSCALERLITE",
+        "title": "AutoScalerLite",
+        "name": "AutoScalerLite",
+        "content": "Lightweight scaling operator for container orchestrators.",
+        "decision_kit_id": "oss-project-triage"
+    },
+
+    # Community Budget Allocation
+    "Candidate-COMMUNITY-WIFI-EXPANSION": {
+        "id": "community-wifi-expansion",
+        "candidate_id": "Candidate-COMMUNITY-WIFI-EXPANSION",
+        "title": "Community Wi-Fi Expansion",
+        "name": "Community Wi-Fi Expansion",
+        "content": "Public access Wi-Fi nodes expansion across neighborhoods.",
+        "decision_kit_id": "community-budget-allocation"
+    },
+    "Candidate-COMMUNITY-URBAN-TREE-CANOPY-BOOST": {
+        "id": "community-urban-tree-canopy-boost",
+        "candidate_id": "Candidate-COMMUNITY-URBAN-TREE-CANOPY-BOOST",
+        "title": "Urban Tree Canopy Boost",
+        "name": "Urban Tree Canopy Boost",
+        "content": "Heat mitigation through expanded urban tree canopy.",
+        "decision_kit_id": "community-budget-allocation"
+    },
+    "Candidate-COMMUNITY-NEIGHBORHOOD-MICRO-LIBRARY": {
+        "id": "community-neighborhood-micro-library",
+        "candidate_id": "Candidate-COMMUNITY-NEIGHBORHOOD-MICRO-LIBRARY",
+        "title": "Neighborhood Micro Library",
+        "name": "Neighborhood Micro Library",
+        "content": "Compact lending libraries to improve neighborhood literacy access.",
+        "decision_kit_id": "community-budget-allocation"
+    },
+
+    # Home Espresso Setup Selection
+    "Candidate-ESPRESSO-LELIT-BIANCA-V3": {
+        "id": "espresso-lelit-bianca-v3",
+        "candidate_id": "Candidate-ESPRESSO-LELIT-BIANCA-V3",
+        "title": "Lelit Bianca V3",
+        "name": "Lelit Bianca V3",
+        "content": "Flow profiling dual boiler espresso machine with excellent temperature control.",
+        "decision_kit_id": "home-espresso-selection"
+    },
+    "Candidate-ESPRESSO-PROFITEC-PRO-700": {
+        "id": "espresso-profitec-pro-700",
+        "candidate_id": "Candidate-ESPRESSO-PROFITEC-PRO-700",
+        "title": "Profitec Pro 700",
+        "name": "Profitec Pro 700",
+        "content": "Stable dual boiler machine known for build quality and reliability.",
+        "decision_kit_id": "home-espresso-selection"
+    },
+    "Candidate-ESPRESSO-BREVILLE-DUAL-BOILER": {
+        "id": "espresso-breville-dual-boiler",
+        "candidate_id": "Candidate-ESPRESSO-BREVILLE-DUAL-BOILER",
+        "title": "Breville Dual Boiler",
+        "name": "Breville Dual Boiler",
+        "content": "Great value machine with precise temperature control.",
+        "decision_kit_id": "home-espresso-selection"
+    },
+
+    # Conference Talk Submissions
+    "Candidate-CFP-SCALING-EVENT-DRIVEN-AI-SYSTEMS": {
+        "id": "cfp-scaling-event-driven-ai-systems",
+        "candidate_id": "Candidate-CFP-SCALING-EVENT-DRIVEN-AI-SYSTEMS",
+        "title": "Scaling Event-Driven AI Systems",
+        "name": "Scaling Event-Driven AI Systems",
+        "content": "Talk on architecture patterns for scaling event-driven AI systems.",
+        "decision_kit_id": "conference-talk-submissions"
+    },
+    "Candidate-CFP-MEMORY-EFFICIENT-VECTOR-INDEXING": {
+        "id": "cfp-memory-efficient-vector-indexing",
+        "candidate_id": "Candidate-CFP-MEMORY-EFFICIENT-VECTOR-INDEXING",
+        "title": "Memory-Efficient Vector Indexing",
+        "name": "Memory-Efficient Vector Indexing",
+        "content": "Explores storage and recall strategies for vector databases.",
+        "decision_kit_id": "conference-talk-submissions"
+    },
+    "Candidate-CFP-POLICY-AS-CODE-AND-OBSERVABILITY": {
+        "id": "cfp-policy-as-code-and-observability",
+        "candidate_id": "Candidate-CFP-POLICY-AS-CODE-AND-OBSERVABILITY",
+        "title": "Unifying Policy-as-Code and Observability",
+        "name": "Unifying Policy-as-Code and Observability",
+        "content": "Holistic governance combining policy-as-code with observability.",
+        "decision_kit_id": "conference-talk-submissions"
+    },
+
+    # Backyard Renovation Prioritization
+    "Candidate-BACKYARD-PERGOLA-LIGHTING": {
+        "id": "backyard-pergola-lighting",
+        "candidate_id": "Candidate-BACKYARD-PERGOLA-LIGHTING",
+        "title": "Pergola + Lighting",
+        "name": "Pergola + Lighting",
+        "content": "Shade structure with ambient lighting for outdoor enjoyment.",
+        "decision_kit_id": "backyard-renovation"
+    },
+    "Candidate-BACKYARD-RAISED-GARDEN-BEDS": {
+        "id": "backyard-raised-garden-beds",
+        "candidate_id": "Candidate-BACKYARD-RAISED-GARDEN-BEDS",
+        "title": "Raised Garden Beds",
+        "name": "Raised Garden Beds",
+        "content": "Seasonal vegetable beds for home gardening.",
+        "decision_kit_id": "backyard-renovation"
+    },
+    "Candidate-BACKYARD-FIRE-PIT-SEATING-AREA": {
+        "id": "backyard-fire-pit-seating-area",
+        "candidate_id": "Candidate-BACKYARD-FIRE-PIT-SEATING-AREA",
+        "title": "Fire Pit Seating Area",
+        "name": "Fire Pit Seating Area",
+        "content": "Evening gathering spot centered on a fire pit.",
+        "decision_kit_id": "backyard-renovation"
+    },
+
+    # Software Engineer Hiring
+    "Candidate-HIRING-ALICE-RIVERA": {
+        "id": "hiring-alice-rivera",
+        "candidate_id": "Candidate-HIRING-ALICE-RIVERA",
+        "title": "Alice Rivera",
+        "name": "Alice Rivera",
+        "content": "Senior backend engineer who led multi-region service migrations.",
+        "decision_kit_id": "software-engineer-hiring"
+    },
+    "Candidate-HIRING-BENJAMIN-CHO": {
+        "id": "hiring-benjamin-cho",
+        "candidate_id": "Candidate-HIRING-BENJAMIN-CHO",
+        "title": "Benjamin Cho",
+        "name": "Benjamin Cho",
+        "content": "Strong distributed caching experience and platform performance work.",
+        "decision_kit_id": "software-engineer-hiring"
+    },
+    "Candidate-HIRING-PRIYA-NATARAJAN": {
+        "id": "hiring-priya-natarajan",
+        "candidate_id": "Candidate-HIRING-PRIYA-NATARAJAN",
+        "title": "Priya Natarajan",
+        "name": "Priya Natarajan",
+        "content": "Observability and SRE advocate with strong reliability mindset.",
+        "decision_kit_id": "software-engineer-hiring"
+    },
+    "Candidate-HIRING-MARCUS-ONEILL": {
+        "id": "hiring-marcus-oneill",
+        "candidate_id": "Candidate-HIRING-MARCUS-ONEILL",
+        "title": "Marcus O'Neill",
+        "name": "Marcus O'Neill",
+        "content": "Scalability and data pipeline experience in production systems.",
+        "decision_kit_id": "software-engineer-hiring"
+    },
+})
+
