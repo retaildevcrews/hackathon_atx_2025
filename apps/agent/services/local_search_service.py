@@ -107,3 +107,22 @@ class LocalSearchService:
 
         logger.info(f"LOCAL SEARCH: Returning {len(results)} mock search results")
         return results
+
+    def find_candidate_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """Find a candidate by display name (case-insensitive).
+
+        Args:
+            name: Display name to search for
+
+        Returns:
+            Candidate data if found, otherwise None
+        """
+        target = (name or "").strip().lower()
+        if not target:
+            return None
+
+        for cand in self.mock_candidates.values():
+            cand_name = str(cand.get("name", "")).strip().lower()
+            if cand_name == target:
+                return cand
+        return None
