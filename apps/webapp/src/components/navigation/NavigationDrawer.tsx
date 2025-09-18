@@ -127,22 +127,18 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     );
   }
 
-  // Desktop: treat as persistent/collapsible; when closed, render nothing so content shifts under full-width AppBar
-  if (!open) {
-    return null;
-  }
-
+  // Desktop overlay: use temporary variant without shifting layout; closes on outside click / ESC
   return (
     <Drawer
-      variant="persistent"
+      variant="temporary"
       open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
       sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
-          boxSizing: 'border-box',
-        },
+          boxSizing: 'border-box'
+        }
       }}
     >
       {drawerContent}

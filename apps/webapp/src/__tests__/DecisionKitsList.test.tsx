@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { App } from '../pages/App';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { DecisionKitListPage } from '../pages/decision-kits/DecisionKitListPage';
+import { DecisionKitDetailPage } from '../pages/decision-kits/DecisionKitDetailPage';
 
 jest.mock('../hooks/useDecisionKits', () => ({
   useDecisionKits: () => ({
@@ -30,12 +32,23 @@ jest.mock('../hooks/useDecisionKit', () => ({
 }));
 
 describe('Decision Kits List Page', () => {
-  it('renders kits and navigates to detail', () => {
-    render(<App />);
-    expect(screen.getByText(/Kit Alpha/i)).toBeInTheDocument();
+  it('renders kits and navigates to detail', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<DecisionKitListPage />} />
+          <Route path="/decision-kits/:kitId" element={<DecisionKitDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // List shows kit
+    expect(await screen.findByText(/Kit Alpha/i)).toBeInTheDocument();
+
     fireEvent.click(screen.getByText(/Kit Alpha/i));
-    // After navigation, detail page should show kit name as heading
-    expect(screen.getByRole('heading', { name: /Kit Alpha/i })).toBeInTheDocument();
+
+    // Detail heading appears
+    expect(await screen.findByRole('heading', { name: /Kit Alpha/i })).toBeInTheDocument();
     expect(screen.getByText(/Criteria: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Candidates \(1\)/i)).toBeInTheDocument();
   });

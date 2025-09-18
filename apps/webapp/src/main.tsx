@@ -13,7 +13,7 @@ export const ColorModeContext = createContext<{ mode: ThemeMode; toggleTheme: ()
   toggleTheme: () => {},
 });
 
-const Root: React.FC = () => {
+export const Root: React.FC = () => {
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('theme-mode') : null;
@@ -50,8 +50,10 @@ const Root: React.FC = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <Root />
-  </React.StrictMode>
-);
+if (typeof document !== 'undefined' && document.getElementById('root')) {
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+    <React.StrictMode>
+      <Root />
+    </React.StrictMode>
+  );
+}
