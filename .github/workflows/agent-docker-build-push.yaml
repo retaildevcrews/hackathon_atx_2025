@@ -5,6 +5,7 @@ on:
     branches: [ main, cicd-to-acr ]
     paths:
       - 'apps/agent/**'
+      - '.github/workflows/agent-docker-build-push.yaml'
 
 permissions:
   id-token: write

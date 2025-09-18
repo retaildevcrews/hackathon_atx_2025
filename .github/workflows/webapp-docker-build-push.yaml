@@ -5,6 +5,7 @@ on:
     branches: [ main, cicd-to-acr ]
     paths:
       - 'apps/webapp/**'
+      - '.github/workflows/webapp-docker-build-push.yaml'
 
 permissions:
   id-token: write
