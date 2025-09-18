@@ -148,7 +148,7 @@ async def get_rubric_details(
         Rubric details with criteria and scoring information
     """
     try:
-        rubric_data = await evaluation_service.criteria_bridge.get_rubric(rubric_id)
+        rubric_data = await evaluation_service._get_rubric_direct(rubric_id)
 
         if not rubric_data:
             raise HTTPException(
@@ -222,3 +222,38 @@ async def evaluation_health() -> Dict[str, str]:
         "status": "healthy",
         "service": "evaluation"
     }
+
+
+@router.get("/test-candidates")
+async def list_test_candidates(
+    evaluation_service: EvaluationService = Depends(get_evaluation_service)
+) -> Dict[str, Any]:
+    """List available test candidates (only works when USE_LOCAL_SEARCH=true)."""
+    try:
+        # Check if we're using local search
+        from config import get_settings
+        settings = get_settings()
+
+        if not settings.use_local_search:
+            return {
+                "message": "Test candidates only available when USE_LOCAL_SEARCH=true",
+                "current_mode": "Azure Search"
+            }
+
+        # Access the local search service
+        from services.local_search_service import LocalSearchService
+        if isinstance(evaluation_service.search_service, LocalSearchService):
+            candidates = evaluation_service.search_service.list_available_candidates()
+            return {
+                "mode": "Local Search (Test Mode)",
+                "available_candidates": candidates,
+                "total": len(candidates)
+            }
+        else:
+            return {
+                "message": "Local search not enabled",
+                "current_mode": "Azure Search"
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list test candidates: {str(e)}")
