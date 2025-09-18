@@ -2,8 +2,6 @@ services:
   criteria_api:
     build: ./criteria_api
     container_name: criteria_api
-    volumes:
-      - ~/.azure:/root/.azure # Mount Azure CLI config
     env_file:
       - ./criteria_api/.env
     ports:
