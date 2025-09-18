@@ -33,5 +33,5 @@ jobs:
         dockerfilePath: ./apps/webapp/Dockerfile
         imageToBuild: ${{ secrets.ACR_NAME }}.azurecr.io/webapp:latest
         acrName: ${{ secrets.ACR_NAME }}
-        containerAppName: webapp2025hack
+        # containerAppName: webapp2025hack
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
