@@ -349,10 +349,78 @@ RUBRIC_DEFINITIONS = [
                 {"name": "Benjamin Cho", "description": "Strong on distributed caching"},
                 {"name": "Priya Natarajan", "description": "Observability & SRE advocate"},
                 {"name": "Marcus O'Neill", "description": "Scalability + data pipeline experience"},
+                
             ],
         },
     },
 ]
+
+"""Deterministic candidate IDs aligned with apps/agent/seed/seed_data.py
+
+Keys:
+- Top-level key: rubric name (as defined in RUBRIC_DEFINITIONS -> 'name')
+- Inner key: exact candidate display name from the decision kit 'candidates' list
+- Value: desired candidate.id string (must be globally unique)
+"""
+CANDIDATE_ID_MAP = {
+    "TV Evaluation": {
+        "LG OLED C3 55\"": "Candidate-TV-LG-OLED-C3-55",
+        "Samsung QN90C 55\"": "Candidate-TV-SAMSUNG-QN90C-55",
+        "Sony Bravia XR A80L": "Candidate-TV-SONY-BRAVIA-XR-A80L",
+    },
+    "Grant Proposal Review": {
+        "Urban Air Quality Sensors": "Candidate-GRANT-URBAN-AIR-QUALITY-SENSORS",
+        "Food Waste Analytics Platform": "Candidate-GRANT-FOOD-WASTE-ANALYTICS-PLATFORM",
+        "STEM Outreach Mobile Lab": "Candidate-GRANT-STEM-OUTREACH-MOBILE-LAB",
+    },
+    "Classroom Project Assessment": {
+        "Smart Campus Navigator": "Candidate-CLASSROOM-SMART-CAMPUS-NAVIGATOR",
+        "Meal Plan Optimizer": "Candidate-CLASSROOM-MEAL-PLAN-OPTIMIZER",
+        "Adaptive Study Scheduler": "Candidate-CLASSROOM-ADAPTIVE-STUDY-SCHEDULER",
+    },
+    "Startup Pitch Scoring": {
+        "LoopCart": "Candidate-PITCH-LOOPCART",
+        "SynthEdge": "Candidate-PITCH-SYNTHEDGE",
+        "FarmTrace": "Candidate-PITCH-FARMTRACE",
+    },
+    "Compliance Readiness Assessment": {
+        "Accounting System Controls": "Candidate-COMPLIANCE-ACCOUNTING-SYSTEM-CONTROLS",
+        "Access Governance": "Candidate-COMPLIANCE-ACCESS-GOVERNANCE",
+        "Incident Response Program": "Candidate-COMPLIANCE-INCIDENT-RESPONSE-PROGRAM",
+    },
+    "Open Source Project Triage": {
+        "MeshGraphQL": "Candidate-OSS-MESHGRAPHQL",
+        "LogStreamX": "Candidate-OSS-LOGSTREAMX",
+        "AutoScalerLite": "Candidate-OSS-AUTOSCALERLITE",
+    },
+    "Community Budget Allocation": {
+        "Community Wi-Fi Expansion": "Candidate-COMMUNITY-WIFI-EXPANSION",
+        "Urban Tree Canopy Boost": "Candidate-COMMUNITY-URBAN-TREE-CANOPY-BOOST",
+        "Neighborhood Micro Library": "Candidate-COMMUNITY-NEIGHBORHOOD-MICRO-LIBRARY",
+    },
+    "Home Espresso Setup Selection": {
+        "Lelit Bianca V3": "Candidate-ESPRESSO-LELIT-BIANCA-V3",
+        "Profitec Pro 700": "Candidate-ESPRESSO-PROFITEC-PRO-700",
+        "Breville Dual Boiler": "Candidate-ESPRESSO-BREVILLE-DUAL-BOILER",
+    },
+    "Conference Talk Submissions": {
+        "Scaling Event-Driven AI Systems": "Candidate-CFP-SCALING-EVENT-DRIVEN-AI-SYSTEMS",
+        "Memory-Efficient Vector Indexing": "Candidate-CFP-MEMORY-EFFICIENT-VECTOR-INDEXING",
+        "Unifying Policy-as-Code and Observability": "Candidate-CFP-POLICY-AS-CODE-AND-OBSERVABILITY",
+    },
+    "Backyard Renovation Prioritization": {
+        "Pergola + Lighting": "Candidate-BACKYARD-PERGOLA-LIGHTING",
+        "Raised Garden Beds": "Candidate-BACKYARD-RAISED-GARDEN-BEDS",
+        "Fire Pit Seating Area": "Candidate-BACKYARD-FIRE-PIT-SEATING-AREA",
+    },
+    "Software Engineer Hiring": {
+        "Alice Rivera": "Candidate-HIRING-ALICE-RIVERA",
+        "Benjamin Cho": "Candidate-HIRING-BENJAMIN-CHO",
+        "Priya Natarajan": "Candidate-HIRING-PRIYA-NATARAJAN",
+        "Marcus O'Neill": "Candidate-HIRING-MARCUS-ONEILL",
+        
+    },
+}
 
 
 def _ensure_rubric(db: Session, definition: dict):
@@ -409,11 +477,18 @@ def _ensure_decision_kit_with_candidates(db: Session, rubric: RubricORM, kit_def
     )
     db.add(dk)
     db.flush()
+    # Determine rubric name as defined in seed (use rubric.name_original)
+    rubric_name = rubric.name_original
+    cand_id_lookup = CANDIDATE_ID_MAP.get(rubric_name, {})
+
     for pos, cdef in enumerate(kit_def.get("candidates", [])):
+        display_name = cdef["name"]
+        # Prefer deterministic ID from map; fall back to UUID if not found
+        deterministic_id = cand_id_lookup.get(display_name, None)
         cand = CandidateORM(
-            id=str(uuid.uuid4()),
-            name=cdef["name"],
-            name_normalized=cdef["name"].lower(),
+            id=deterministic_id or str(uuid.uuid4()),
+            name=display_name,
+            name_normalized=display_name.lower(),
             description=cdef.get("description"),
         )
         db.add(cand)
