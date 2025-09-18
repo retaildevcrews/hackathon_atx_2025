@@ -36,7 +36,7 @@ def _pseudo_save_blob(
     """
     # conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("STORAGE_CONN_STRING")
     credential = DefaultAzureCredential()
-    container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "raw-docs")
+    container = os.getenv("CANDIDATE_MATERIALS_CONTAINER", "docs")
     # if not conn_str:
     #     logging.warning("AZURE_STORAGE_CONNECTION_STRING not set; skipping blob upload for %s", blob_path)
     #     return

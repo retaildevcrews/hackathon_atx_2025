@@ -1,6 +1,8 @@
 services:
   criteria_api:
     build: ./criteria_api
+    volumes:
+      - ~/.azure:/root/.azure
     container_name: criteria_api
     env_file:
       - ./criteria_api/.env
