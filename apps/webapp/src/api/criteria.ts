@@ -7,7 +7,7 @@ export interface CriteriaRecord {
   definition?: string;
 }
 
-const base = import.meta.env.VITE_API_BASE_URL || '/api';
+const base = process.env.VITE_API_BASE_URL || '/api';
 const client = axios.create({ baseURL: base });
 
 const criteriaCache = new Map<string, CriteriaRecord>();

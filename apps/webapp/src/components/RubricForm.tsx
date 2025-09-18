@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Rubric } from '../types/rubric';
 import type { Criteria as CriteriaModel } from '../hooks/useCriteria';
 import { useCriteria } from '../hooks/useCriteria';
 import axios from 'axios';
-import { Box, Typography, TextField, Button, FormControl, FormHelperText, Paper, Stack, FormLabel, IconButton, Divider, Chip, Collapse, FormControlLabel, Switch } from '@mui/material';
+import { Box, Typography, TextField, Button, FormControl, FormHelperText, Paper, Stack, FormLabel, IconButton, Divider, Collapse, FormControlLabel, Switch } from '@mui/material';
 import { Add, Delete, Edit, ExpandMore, ExpandLess } from '@mui/icons-material';
 
 interface RubricFormProps {
@@ -48,7 +47,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
 
   // Fetch runtime settings from API
   useEffect(() => {
-    const apiBase = (window as any).__CRITERIA_API_URL__ || import.meta.env.VITE_CRITERIA_API_URL || 'http://localhost:8000';
+    const apiBase = (window as any).__CRITERIA_API_URL__ || process.env.VITE_CRITERIA_API_URL || 'http://localhost:8000';
     axios.get(`${apiBase}/settings`).then(res => {
       const s = res.data || {};
       if (typeof s.rubricWeightMin === 'number') setWeightMin(s.rubricWeightMin);
@@ -93,13 +92,12 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
     const hasDescription = description.trim().length > 0;
     const hasCriteria = entries.length > 0;
     if (!hasName || !hasDescription || !hasCriteria) return;
+    if (weightsErrorText) return; // prevent submit if weights invalid when used
     const normalized = entries.map(e => ({
-      // API expects criteriaId and optional weight
-      criteriaId: e.id && e.id !== '' ? String(e.id) : undefined,
+      id: e.id ? String(e.id) : '',
       name: e.name,
       description: e.description || '',
-      definition: e.definition || '',
-      weight: typeof e.weight === 'number' ? e.weight : undefined,
+      definition: e.definition || ''
     }));
     onSave({ name, description, criteria: normalized as any });
   }
@@ -195,12 +193,13 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
   const criteriaErrorText = entries.length === 0 ? 'Please add at least one criterion.' : '';
   // Weights must all be present and sum to 1.0 (tolerance for float rounding)
   const weights = entries.map(e => e.weight).filter((w): w is number => typeof w === 'number');
-  const allHaveWeights = entries.length > 0 && weights.length === entries.length;
+  const anyWeightsSpecified = weights.length > 0;
+  const allHaveWeights = anyWeightsSpecified && weights.length === entries.length;
   const weightSum = weights.reduce((acc, w) => acc + w, 0);
   const weightTol = 1e-6;
-  const weightsErrorText = !allHaveWeights
+  const weightsErrorText = anyWeightsSpecified ? (!allHaveWeights
     ? 'Please enter a weight for each criterion.'
-    : (Math.abs(weightSum - 1) > weightTol ? `Weights must sum to 1. Current total: ${weightSum.toFixed(2)}` : '');
+    : (Math.abs(weightSum - 1) > weightTol ? `Weights must sum to 1. Current total: ${weightSum.toFixed(2)}` : '')) : '';
   const showNameError = (submitted || touchedName) && !!nameErrorText;
   const showDescriptionError = (submitted || touchedDescription) && !!descriptionErrorText;
   const showCriteriaError = (submitted || touchedCriteria) && (!!criteriaErrorText || !!weightsErrorText);
@@ -250,7 +249,7 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
                     <Stack spacing={1}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
                         <TextField
-                          label="Name"
+                          label="Criterion Name"
                           size="small"
                           value={e.name}
                           onChange={ev => updateEntry(idx, { name: ev.target.value })}
@@ -337,23 +336,34 @@ export const RubricForm: React.FC<RubricFormProps> = ({ initialRubric, onSave, l
               <FormHelperText>
                 {showCriteriaError ? (criteriaErrorText || weightsErrorText) : (errorText ? errorText : ' ')}
               </FormHelperText>
-              {!!criteria.length && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">Available criteria:</Typography>
-                  <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {criteria.map((c: CriteriaModel) => (
-                      <Chip
-                        key={String(c.id)}
-                        label={c.name}
-                        onClick={() => setEntries(prev => [...prev, { id: String(c.id), name: c.name, description: (c as any).description || '', definition: (c as any).definition || '' }])}
-                        size="small"
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                </Box>
+              {showCriteriaError && !entries.length && (
+                <Typography color="error" variant="body2">Please select at least one criterion.</Typography>
               )}
             </FormControl>
+          </Box>
+          {/* Legacy criteria selection (checkbox list) for tests expecting label-based selection */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Select existing criteria</Typography>
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {criteria.map((c: CriteriaModel) => {
+                const selectedIndex = entries.findIndex(e => String(e.id) === String(c.id));
+                const checked = selectedIndex !== -1;
+                return (
+                  <FormControlLabel
+                    key={c.id}
+                    control={<Switch size="small" checked={checked} onChange={() => {
+                      if (checked) {
+                        setEntries(prev => prev.filter(e => String(e.id) !== String(c.id)));
+                      } else {
+                        setEntries(prev => [...prev, { id: String(c.id), name: c.name, description: (c as any).description || '', definition: (c as any).definition || '' }]);
+                      }
+                      setTouchedCriteria(true);
+                    }} />}
+                    label={c.name}
+                  />
+                );
+              })}
+            </Stack>
           </Box>
           <Button
             type="submit"

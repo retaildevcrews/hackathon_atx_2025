@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import { Menu as MenuIcon, DarkMode, LightMode } from '@mui/icons-material';
 import { Outlet, Link } from 'react-router-dom';
-import { NavigationDrawer, DRAWER_WIDTH } from '../../components/navigation/NavigationDrawer';
+import { NavigationDrawer } from '../../components/navigation/NavigationDrawer';
 import { ColorModeContext } from '../../main';
 
 export const AppLayout: React.FC = () => {
@@ -79,11 +79,7 @@ export const AppLayout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          transition: (theme) => theme.transitions.create(['margin-left'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
-          ml: { md: drawerOpen ? `${DRAWER_WIDTH}px` : 0 },
+          // Content no longer shifts when drawer opens; overlay behavior retains left alignment
         }}
       >
         <Toolbar /> {/* This toolbar acts as spacer for fixed AppBar */}
