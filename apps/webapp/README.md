@@ -10,9 +10,9 @@ The app uses Material UI with a centralized theme in `src/theme.ts`.
 
 - Update palette and component overrides in `src/theme.ts`. The theme is produced by `getAppTheme(mode)`.
 - Common places to adjust:
-   - `palette.primary` / `palette.secondary`
-   - `components.MuiAppBar.styleOverrides`
-   - `components.MuiButton.styleOverrides`
+  - `palette.primary` / `palette.secondary`
+  - `components.MuiAppBar.styleOverrides`
+  - `components.MuiButton.styleOverrides`
 
 ## Light/Dark toggle
 
@@ -31,7 +31,8 @@ export const getAppTheme = (mode: 'light' | 'dark') => createTheme({
 // src/main.tsx (excerpt)
 const [mode, setMode] = useState<ThemeMode>('light');
 ```
-# Webapp: Criteria & Rubric Manager
+
+## Webapp: Criteria & Rubric Manager
 
 This React app allows users to manage document analysis criteria and build rubrics composed of multiple criteria. It integrates with backend APIs for full CRUD operations.
 
@@ -98,6 +99,7 @@ This React app allows users to manage document analysis criteria and build rubri
 - `/rubrics/:id/edit` — Edit rubric form
 
 ## Project Structure
+
 - `src/components/` — UI components for criteria and rubrics
   - `src/components/navigation/` — Navigation drawer component
 - `src/pages/` — Route-level components
@@ -161,6 +163,7 @@ Edge Cases:
 - Locked kits (409) display an error and remain intact.
 
 ## Testing
+
 Add unit and integration tests in `src/__tests__/` (recommended).
 
 Notes about production builds and tests:
@@ -168,9 +171,11 @@ Notes about production builds and tests:
 - Production builds exclude test files via `tsconfig.json` (`exclude` includes `src/__tests__`, `*.test.ts(x)`, and `src/setupTests.ts`).
 - This prevents test-only imports (e.g., `@testing-library/react`) from affecting the production TypeScript build.
 - To run tests locally, use:
+
    ```sh
    yarn test
    ```
+
    Ensure dev dependencies are installed and that `jest` is configured (see `jest.config.cjs`).
 
 ### Toggle legacy Rubric UI for tests/dev
@@ -183,4 +188,5 @@ The app defaults to the new Decision Kits UI. Some tests target the legacy Rubri
 When the flag is not set (or set to any value other than `'false'`), the Decision Kits UI is rendered.
 
 ## Contributing
+
 - Please see the planning docs in `copilot_planning/webapp/` for feature and implementation plans.
