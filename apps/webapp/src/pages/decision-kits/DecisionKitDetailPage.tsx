@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDecisionKit } from '../../hooks/useDecisionKit';
 import { useRubricSummary } from '../../hooks/useRubricSummary';
-import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack, Snackbar, TextField } from '@mui/material';
+import { Box, Typography, Skeleton, Alert, Button, Grid, Card, CardContent, IconButton, Collapse, Divider, Stack, Snackbar, TextField, Chip, Tooltip } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/PersonAdd';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -16,6 +16,97 @@ import { AttachRubricForm } from '../../components/AttachRubricForm';
 import { fetchRubricSummary } from '../../api/rubrics';
 import { assignRubricToDecisionKit, updateDecisionKit } from '../../api/decisionKits';
 import { evaluateCandidates } from '../../api/agent';
+import { useCandidateEvaluations, invalidateCandidateEvaluations } from '../../hooks/useCandidateEvaluations';
+
+interface CandidateLite {
+  id: string;
+  name: string;
+  description?: string;
+  position?: number;
+}
+
+interface CandidateTileProps {
+  kitId: string;
+  candidate: CandidateLite;
+  rubricId?: string | null;
+  onEvaluated: (candidateId: string) => void;
+  evaluating: boolean;
+  setEvaluating: (id: string | null) => void;
+  navigate: ReturnType<typeof useNavigate>;
+  showToast: (msg: string, severity: 'success' | 'error') => void;
+}
+
+const CandidateTile: React.FC<CandidateTileProps> = ({ kitId, candidate, rubricId, onEvaluated, evaluating, setEvaluating, navigate, showToast }) => {
+  const { latest, loading, error, retry } = useCandidateEvaluations(candidate.id);
+
+  const handleEvaluate = useCallback(async () => {
+    if (!rubricId) return;
+    try {
+      setEvaluating(candidate.id);
+      const resp = await evaluateCandidates(String(rubricId), [String(candidate.id)]);
+      if (resp.status === 'success') {
+        showToast(resp.evaluation_id ? `Evaluation started: ${resp.evaluation_id}` : 'Evaluation complete', 'success');
+        invalidateCandidateEvaluations(candidate.id);
+        onEvaluated(candidate.id);
+      } else {
+        showToast(resp.error || 'Evaluation failed', 'error');
+      }
+    } catch (e: any) {
+      showToast(e?.message || 'Evaluation error', 'error');
+    } finally {
+      setEvaluating(null);
+    }
+  }, [rubricId, candidate.id, onEvaluated, setEvaluating, showToast]);
+
+  const scoreLabel = latest ? `${latest.overall_score.toFixed(1)}` : null;
+
+  return (
+    <Card variant="outlined">
+      <CardContent sx={{ position: 'relative', pb: 5 }}>
+        <Typography variant="subtitle1" noWrap>{candidate.name}</Typography>
+        {candidate.description && <Typography variant="body2" className="twoLineClamp">{candidate.description}</Typography>}
+        <IconButton
+          aria-label="edit candidate"
+          size="small"
+          sx={{ position: 'absolute', top: 4, right: 4 }}
+          onClick={() => navigate(`/decision-kits/${kitId}/candidates/${candidate.id}/edit`)}
+        >
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} alignItems="center">
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<PlayArrowIcon />}
+            disabled={!rubricId || evaluating}
+            onClick={handleEvaluate}
+          >
+            Evaluate
+          </Button>
+          {loading && <Chip size="small" label="Loading eval..." />}
+          {error && (
+            <Tooltip title={error}>
+              <Chip size="small" color="error" label="Eval error" onClick={retry} />
+            </Tooltip>
+          )}
+          {scoreLabel && !loading && !error && (
+            <Tooltip title={`Latest score from ${new Date(latest!.created_at).toLocaleString()} (rubric: ${latest!.rubric_name})`}>
+              <Chip size="small" color="primary" label={`Score: ${scoreLabel}`} />
+            </Tooltip>
+          )}
+          {latest && (
+            <Button
+              size="small"
+              onClick={() => navigate(`/decision-kits/${kitId}/candidates/${candidate.id}/evaluations/latest`)}
+            >
+              View Eval
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+};
 
 export const DecisionKitDetailPage: React.FC = () => {
   const { kitId } = useParams();
@@ -247,49 +338,18 @@ export const DecisionKitDetailPage: React.FC = () => {
                 position: cd.position ?? 0,
               }))
               .sort((a: any, b: any) => a.position - b.position)
-              .map((cd: any) => (
+              .map((cd: CandidateLite) => (
                 <Grid item xs={12} sm={6} md={4} key={cd.id}>
-                  <Card variant="outlined">
-                    <CardContent sx={{ position: 'relative', pb: 4 }}>
-                      <Typography variant="subtitle1" noWrap>{cd.name}</Typography>
-                      {cd.description && <Typography variant="body2" className="twoLineClamp">{cd.description}</Typography>}
-                      <IconButton
-                        aria-label="edit candidate"
-                        size="small"
-                        sx={{ position: 'absolute', top: 4, right: 4 }}
-                        onClick={() => navigate(`/decision-kits/${kit.id}/candidates/${cd.id}/edit`)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<PlayArrowIcon />}
-                          disabled={!currentRubricId || evaluatingId === cd.id}
-                          onClick={async () => {
-                            if (!currentRubricId) return;
-                            try {
-                              setEvaluatingId(cd.id);
-                              const resp = await evaluateCandidates(String(currentRubricId), [String(cd.id)]);
-                              if (resp.status === 'success') {
-                                const msg = resp.evaluation_id ? `Evaluation started: ${resp.evaluation_id}` : 'Evaluation complete';
-                                setToast({ open: true, message: msg, severity: 'success' });
-                              } else {
-                                setToast({ open: true, message: resp.error || 'Evaluation failed', severity: 'error' });
-                              }
-                            } catch (e: any) {
-                              setToast({ open: true, message: e?.message || 'Evaluation error', severity: 'error' });
-                            } finally {
-                              setEvaluatingId(null);
-                            }
-                          }}
-                        >
-                          Evaluate
-                        </Button>
-                      </Stack>
-                    </CardContent>
-                  </Card>
+                  <CandidateTile
+                    kitId={kit.id}
+                    candidate={cd}
+                    rubricId={currentRubricId}
+                    onEvaluated={() => {/* tile hook refresh triggered by invalidation */}}
+                    evaluating={evaluatingId === cd.id}
+                    setEvaluating={setEvaluatingId}
+                    navigate={navigate}
+                    showToast={(message, severity) => setToast({ open: true, message, severity })}
+                  />
                 </Grid>
               ))}
           </Grid>

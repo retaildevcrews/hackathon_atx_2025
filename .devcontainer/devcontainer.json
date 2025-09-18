@@ -26,11 +26,6 @@
       },
       "git-lfs": "latest"
     },
-    "appPort": [
-      8000,
-      8001,
-      5173
-    ]
     // set container specific settings
     "customizations": {
       "vscode": {
