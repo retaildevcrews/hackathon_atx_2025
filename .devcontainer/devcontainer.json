@@ -2,7 +2,7 @@
     "name": "rubricx-devcontainer",
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
     "image": "mcr.microsoft.com/devcontainers/python:3-bookworm", // pinning an OS version
-    "forwardPorts": [
+    "appPort": [
       8000,
       8001,
       5173
