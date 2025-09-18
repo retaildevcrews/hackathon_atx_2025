@@ -28,7 +28,10 @@ export const AppLayout: React.FC = () => {
   // Focus management: focus main content after drawer closes for a11y
   const mainRef = useRef<HTMLDivElement | null>(null);
   const handleDrawerClosedFocusMain = () => {
-    // Slight delay to allow drawer unmount/transition
+    // Ensure the drawer is closed
+    setDrawerOpen(false);
+    // Then move focus to main content after the close transition completes
+    // Use a micro-delay to improve reliability on first interaction after initial load
     requestAnimationFrame(() => {
       mainRef.current?.focus();
     });
