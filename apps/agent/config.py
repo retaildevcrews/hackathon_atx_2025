@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Local development mode - use mock data instead of Azure Search
     use_local_search: bool = Field(default=False, alias="USE_LOCAL_SEARCH")
 
+    # Multi-agent consensus evaluation
+    use_consensus_evaluation: bool = Field(default=False, alias="USE_CONSENSUS_EVALUATION")
+
     # Criteria API integration
     # Default to local criteria_api dev port; override in container with http://criteria_api:8000
     criteria_api_url: str = Field(default="http://localhost:8000", alias="CRITERIA_API_URL")
