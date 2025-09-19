@@ -16,6 +16,7 @@ import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from prompts import BATCH_EVALUATION_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class AgentEvaluation:
     evidence: List[str]
     confidence: float
     round_number: int
+    structured_evaluation: Optional[Dict[str, Any]] = None  # Store structured JSON evaluation
 
 
 @dataclass
@@ -223,7 +225,8 @@ class ConsensusEvaluationService:
     ) -> AgentEvaluation:
         """Evaluate as the strict, demanding agent."""
 
-        strict_prompt = f"""
+        # Role-specific instructions for strict agent
+        strict_instructions = """
 You are a STRICT EVALUATOR with high standards. Your role is to:
 - Apply rigorous scoring standards
 - Focus on gaps, weaknesses, and areas for improvement
@@ -231,20 +234,24 @@ You are a STRICT EVALUATOR with high standards. Your role is to:
 - Be conservative with scoring - only award high scores for exceptional performance
 - Look for missing elements and incomplete demonstrations
 
-Candidate: {candidate_id}
-Content: {candidate_content[:2000]}...
-
-Rubric: {rubric_data.get('rubric_name', 'Unknown')}
-Criteria: {[c['name'] for c in rubric_data.get('criteria', [])]}
-
-For each criterion, provide:
-1. Score (1-5, be conservative)
-2. Specific evidence from the candidate
-3. What's missing or could be improved
-4. Why you scored conservatively
-
-Be thorough but demanding in your evaluation.
 """
+
+        # Format criteria details for the prompt
+        criteria_details = ""
+        for criterion in rubric_data.get('criteria', []):
+            criteria_details += f"""**{criterion.get('name', 'Unknown')}** (Weight: {criterion.get('weight', 1.0)})
+Description: {criterion.get('description', 'No description available')}
+Definition: {criterion.get('definition', 'Score 1-5 based on evidence quality')}
+
+"""
+
+        # Use the standardized batch evaluation prompt with strict instructions
+        strict_prompt = strict_instructions + BATCH_EVALUATION_PROMPT.format(
+            rubric_name=rubric_data.get('rubric_name', 'Unknown'),
+            rubric_description=rubric_data.get('description', 'Evaluation rubric'),
+            criteria_details=criteria_details,
+            document_content=candidate_content[:2000] + ("..." if len(candidate_content) > 2000 else "")
+        )
 
         # Log the LLM prompt being sent
         logger.info(f"🤖 STRICT AGENT LLM CALL - Round {round_number}")
@@ -258,10 +265,15 @@ Be thorough but demanding in your evaluation.
             try:
                 logger.info("🚀 Making actual LLM API call to Azure OpenAI...")
                 llm_response = await self._call_llm_with_prompt(strict_prompt, "strict_agent", round_number)
-                logger.info(f"✅ LLM response received - length: {len(str(llm_response))}")
-                return await self._parse_llm_response_to_evaluation(
-                    llm_response, AgentRole.STRICT_EVALUATOR, rubric_data, round_number
-                )
+                logger.info(f"✅ LLM response received - type: {type(llm_response)}")
+                
+                # LLM response should be structured JSON, extract evaluation data
+                if isinstance(llm_response, dict) and 'evaluation' in llm_response:
+                    return self._create_evaluation_from_structured_response(
+                        llm_response, AgentRole.STRICT_EVALUATOR, rubric_data, round_number
+                    )
+                else:
+                    logger.warning("⚠️ LLM returned unexpected format, falling back to deterministic")
             except Exception as e:
                 logger.error(f"❌ LLM call failed: {e}, falling back to deterministic")
         else:
@@ -281,7 +293,8 @@ Be thorough but demanding in your evaluation.
     ) -> AgentEvaluation:
         """Evaluate as the generous, optimistic agent."""
 
-        generous_prompt = f"""
+        # Role-specific instructions for generous agent
+        generous_instructions = """
 You are a GENEROUS EVALUATOR who recognizes potential and growth. Your role is to:
 - Look for strengths and positive indicators
 - Give credit for partial demonstrations and good intentions
@@ -289,20 +302,24 @@ You are a GENEROUS EVALUATOR who recognizes potential and growth. Your role is t
 - Be optimistic about candidate potential
 - Recognize effort and improvement opportunities
 
-Candidate: {candidate_id}
-Content: {candidate_content[:2000]}...
-
-Rubric: {rubric_data.get('rubric_name', 'Unknown')}
-Criteria: {[c['name'] for c in rubric_data.get('criteria', [])]}
-
-For each criterion, provide:
-1. Score (1-5, be optimistic but fair)
-2. Strengths and positive evidence found
-3. Potential for growth and development
-4. Why this candidate shows promise
-
-Be encouraging while maintaining evaluation integrity.
 """
+
+        # Format criteria details for the prompt
+        criteria_details = ""
+        for criterion in rubric_data.get('criteria', []):
+            criteria_details += f"""**{criterion.get('name', 'Unknown')}** (Weight: {criterion.get('weight', 1.0)})
+Description: {criterion.get('description', 'No description available')}
+Definition: {criterion.get('definition', 'Score 1-5 based on evidence quality')}
+
+"""
+
+        # Use the standardized batch evaluation prompt with generous instructions
+        generous_prompt = generous_instructions + BATCH_EVALUATION_PROMPT.format(
+            rubric_name=rubric_data.get('rubric_name', 'Unknown'),
+            rubric_description=rubric_data.get('description', 'Evaluation rubric'),
+            criteria_details=criteria_details,
+            document_content=candidate_content[:2000] + ("..." if len(candidate_content) > 2000 else "")
+        )
 
         # Log the LLM prompt being sent
         logger.info(f"🤖 GENEROUS AGENT LLM CALL - Round {round_number}")
@@ -316,10 +333,15 @@ Be encouraging while maintaining evaluation integrity.
             try:
                 logger.info("🚀 Making actual LLM API call to Azure OpenAI...")
                 llm_response = await self._call_llm_with_prompt(generous_prompt, "generous_agent", round_number)
-                logger.info(f"✅ LLM response received - length: {len(str(llm_response))}")
-                return await self._parse_llm_response_to_evaluation(
-                    llm_response, AgentRole.GENEROUS_EVALUATOR, rubric_data, round_number
-                )
+                logger.info(f"✅ LLM response received - type: {type(llm_response)}")
+                
+                # LLM response should be structured JSON, extract evaluation data
+                if isinstance(llm_response, dict) and 'evaluation' in llm_response:
+                    return self._create_evaluation_from_structured_response(
+                        llm_response, AgentRole.GENEROUS_EVALUATOR, rubric_data, round_number
+                    )
+                else:
+                    logger.warning("⚠️ LLM returned unexpected format, falling back to deterministic")
             except Exception as e:
                 logger.error(f"❌ LLM call failed: {e}, falling back to deterministic")
         else:
@@ -393,7 +415,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=original_eval.detailed_criteria_reasoning,
             evidence=original_eval.evidence,
             confidence=0.85,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=original_eval.structured_evaluation
         )
 
     async def _refine_generous_evaluation(
@@ -424,7 +447,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=original_eval.detailed_criteria_reasoning,
             evidence=original_eval.evidence,
             confidence=0.85,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=original_eval.structured_evaluation
         )
 
     def _create_deterministic_evaluation(
@@ -499,7 +523,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=detailed_criteria_reasoning,
             evidence=evidence,
             confidence=0.8,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=None  # Deterministic evaluation doesn't have structured data
         )
 
     def _agents_agree(
@@ -587,11 +612,13 @@ Be diplomatic but advocate for a more balanced view.
             },
             "agent_detailed_reasoning": {
                 "agent_a_strict": {
+                    "evaluation": strict_eval.structured_evaluation if strict_eval.structured_evaluation else {"text_fallback": strict_eval.reasoning},
                     "overall_reasoning": strict_eval.reasoning,
                     "criteria_reasoning": strict_eval.detailed_criteria_reasoning,
                     "confidence": strict_eval.confidence
                 },
                 "agent_b_generous": {
+                    "evaluation": generous_eval.structured_evaluation if generous_eval.structured_evaluation else {"text_fallback": generous_eval.reasoning},
                     "overall_reasoning": generous_eval.reasoning,
                     "criteria_reasoning": generous_eval.detailed_criteria_reasoning,
                     "confidence": generous_eval.confidence
@@ -708,15 +735,24 @@ Be diplomatic but advocate for a more balanced view.
 
             duration = time.time() - start_time
 
-            # Log response details
-            response_text = str(response)
-            logger.info(f"✅ LLM Response Details:")
-            logger.info(f"   Response time: {duration:.2f}s")
-            logger.info(f"   Response length: {len(response_text)} chars")
-            logger.info(f"   Response tokens (approx): {len(response_text.split())}")
-            logger.debug(f"   Response preview: {response_text[:200]}...")
-
-            return response_text
+            # Handle response based on type - keep as dict if already structured
+            if isinstance(response, dict):
+                # Response is already a dictionary (structured JSON)
+                logger.info(f"✅ LLM Response Details (Structured JSON):")
+                logger.info(f"   Response time: {duration:.2f}s")
+                logger.info(f"   Response type: dict")
+                logger.info(f"   Response keys: {list(response.keys()) if response else 'None'}")
+                logger.debug(f"   Response preview: {str(response)[:200]}...")
+                return response
+            else:
+                # Response is text, convert to string
+                response_text = str(response)
+                logger.info(f"✅ LLM Response Details (Text):")
+                logger.info(f"   Response time: {duration:.2f}s")
+                logger.info(f"   Response length: {len(response_text)} chars")
+                logger.info(f"   Response tokens (approx): {len(response_text.split())}")
+                logger.debug(f"   Response preview: {response_text[:200]}...")
+                return response_text
 
         except Exception as e:
             logger.error(f"❌ LLM API Call Failed:")
@@ -725,158 +761,74 @@ Be diplomatic but advocate for a more balanced view.
             logger.error(f"   Error type: {type(e).__name__}")
             raise
 
-    async def _parse_llm_response_to_evaluation(
+    def _create_evaluation_from_structured_response(
         self,
-        llm_response: str,
+        response_data: Dict[str, Any],
         agent_role: AgentRole,
         rubric_data: Dict[str, Any],
         round_number: int
     ) -> AgentEvaluation:
-        """Parse LLM response into structured evaluation."""
+        """Create AgentEvaluation from structured LLM response."""
         try:
-            logger.info(f"🔍 Parsing LLM response for {agent_role.value} agent")
-            logger.debug(f"📝 Raw LLM response (first 500 chars): {llm_response[:500]}...")
-
-            # Extract or generate scores based on LLM content
+            logger.info(f"🔍 Creating evaluation from structured response for {agent_role.value} agent")
+            
             criteria_scores = {}
             detailed_reasoning = {}
-
-            # Use the actual LLM response as the overall reasoning, cleaned up
-            overall_reasoning = llm_response.strip()
             
-            # Clean up formatting: convert newlines to proper spacing
-            overall_reasoning = overall_reasoning.replace('\n', ' ').replace('\\n', ' ')
-            overall_reasoning = ' '.join(overall_reasoning.split())  # Remove extra whitespace
-            
-            # Limit length more gracefully without cutting off mid-sentence
-            if len(overall_reasoning) > 1500:
-                # Find the last complete sentence within 1500 characters
-                truncated = overall_reasoning[:1500]
-                last_period = truncated.rfind('.')
-                last_exclamation = truncated.rfind('!')
-                last_question = truncated.rfind('?')
-                last_sentence_end = max(last_period, last_exclamation, last_question)
+            # Process each criterion evaluation
+            for eval_item in response_data['evaluation']:
+                criterion_name = eval_item.get('criterion_name', '')
+                score = float(eval_item.get('score', 2.5))
+                reasoning = eval_item.get('reasoning', 'No reasoning provided')
                 
-                if last_sentence_end > 800:  # Only truncate if we have a reasonable amount of content
-                    overall_reasoning = overall_reasoning[:last_sentence_end + 1]
-                else:
-                    overall_reasoning = overall_reasoning[:1500].rstrip() + "..."
-
+                # Match criterion name to rubric
+                for criterion in rubric_data.get('criteria', []):
+                    if criterion['name'].lower() == criterion_name.lower():
+                        criterion_name = criterion['name']
+                        break
+                
+                criteria_scores[criterion_name] = score
+                detailed_reasoning[criterion_name] = reasoning
+            
+            # Ensure all criteria have scores
+            for criterion in rubric_data.get('criteria', []):
+                if criterion['name'] not in criteria_scores:
+                    # Default score based on agent bias
+                    if agent_role == AgentRole.STRICT_EVALUATOR:
+                        criteria_scores[criterion['name']] = 2.0
+                    else:
+                        criteria_scores[criterion['name']] = 3.0
+                    detailed_reasoning[criterion['name']] = f"Default {agent_role.value} assessment"
+            
+            # Calculate weighted overall score
+            total_weighted_score = 0
+            total_weight = 0
             for criterion in rubric_data.get('criteria', []):
                 criterion_name = criterion['name']
-
-                # Try to extract scores from the LLM response
-                # Look for patterns like "Score: 3" or "Rating: 4/5" etc.
-                import re
-                score_patterns = [
-                    rf"{criterion_name}.*?[sS]core.*?(\d+(?:\.\d+)?)",
-                    rf"{criterion_name}.*?[rR]ating.*?(\d+(?:\.\d+)?)",
-                    rf"{criterion_name}.*?(\d+(?:\.\d+)?)/5",
-                    rf"(\d+(?:\.\d+)?)\s*-\s*{criterion_name}",
-                ]
-
-                extracted_score = None
-                for pattern in score_patterns:
-                    match = re.search(pattern, llm_response, re.IGNORECASE)
-                    if match:
-                        try:
-                            extracted_score = float(match.group(1))
-                            if 1 <= extracted_score <= 5:
-                                break
-                        except (ValueError, IndexError):
-                            continue
-
-                # If no score found, generate based on agent bias and response sentiment
-                if extracted_score is None:
-                    base_score = 2.5
-
-                    # Analyze sentiment in the response for this criterion
-                    criterion_text = ""
-                    criterion_start = llm_response.lower().find(criterion_name.lower())
-                    if criterion_start != -1:
-                        # Extract text around this criterion (next 200 chars)
-                        criterion_text = llm_response[criterion_start:criterion_start + 200]
-
-                    # Look for positive/negative indicators
-                    positive_indicators = ['excellent', 'strong', 'good', 'impressive', 'solid', 'effective', 'demonstrates']
-                    negative_indicators = ['weak', 'poor', 'lacking', 'insufficient', 'limited', 'gaps', 'missing']
-
-                    sentiment_adjustment = 0
-                    for word in positive_indicators:
-                        if word in criterion_text.lower():
-                            sentiment_adjustment += 0.3
-                    for word in negative_indicators:
-                        if word in criterion_text.lower():
-                            sentiment_adjustment -= 0.3
-
-                    # Apply agent bias
-                    if agent_role == AgentRole.STRICT_EVALUATOR:
-                        score = max(1.0, base_score - 0.4 + sentiment_adjustment)
-                    else:
-                        score = min(5.0, base_score + 0.4 + sentiment_adjustment)
-
-                    extracted_score = round(score, 2)
-
-                criteria_scores[criterion_name] = extracted_score
-
-                # Extract reasoning for this criterion from the LLM response
-                criterion_reasoning = f"Based on {agent_role.value} evaluation"
-                criterion_start = llm_response.lower().find(criterion_name.lower())
-                if criterion_start != -1:
-                    # Find the end of this criterion's discussion
-                    next_criterion_start = len(llm_response)
-                    for other_criterion in rubric_data.get('criteria', []):
-                        if other_criterion['name'] != criterion_name:
-                            other_start = llm_response.lower().find(other_criterion['name'].lower(), criterion_start + 1)
-                            if other_start != -1 and other_start < next_criterion_start:
-                                next_criterion_start = other_start
-
-                    # Extract the reasoning for this specific criterion
-                    criterion_reasoning = llm_response[criterion_start:next_criterion_start].strip()
-                    
-                    # Clean up formatting: convert newlines to spaces and limit length more gracefully
-                    criterion_reasoning = criterion_reasoning.replace('\n', ' ').replace('\\n', ' ')
-                    criterion_reasoning = ' '.join(criterion_reasoning.split())  # Remove extra whitespace
-                    
-                    # Limit length more gracefully without cutting off mid-sentence
-                    if len(criterion_reasoning) > 800:
-                        # Find the last complete sentence within 800 characters
-                        truncated = criterion_reasoning[:800]
-                        last_period = truncated.rfind('.')
-                        last_exclamation = truncated.rfind('!')
-                        last_question = truncated.rfind('?')
-                        last_sentence_end = max(last_period, last_exclamation, last_question)
-                        
-                        if last_sentence_end > 400:  # Only truncate if we have a reasonable amount of content
-                            criterion_reasoning = criterion_reasoning[:last_sentence_end + 1]
-                        else:
-                            criterion_reasoning = criterion_reasoning[:800].rstrip() + "..."
-
-                detailed_reasoning[criterion_name] = criterion_reasoning
-
-            # Calculate weighted overall score
-            overall_score = sum(
-                score * next(c['weight'] for c in rubric_data.get('criteria', []) if c['name'] == name)
-                for name, score in criteria_scores.items()
-            )
-
-            logger.info(f"📊 Parsed evaluation - Overall score: {overall_score:.2f}")
+                weight = float(criterion.get('weight', 1.0))
+                score = criteria_scores.get(criterion_name, 2.5)
+                total_weighted_score += score * weight
+                total_weight += weight
+            
+            overall_score = total_weighted_score / total_weight if total_weight > 0 else 2.5
+            
+            logger.info(f"📊 Created evaluation - Overall score: {overall_score:.2f}")
             logger.info(f"📝 Individual scores: {criteria_scores}")
-
+            
             return AgentEvaluation(
                 agent_role=agent_role,
                 overall_score=overall_score,
                 criteria_scores=criteria_scores,
-                reasoning=overall_reasoning,  # Already cleaned and length-limited above
+                reasoning=f"Structured {agent_role.value} evaluation with {len(response_data['evaluation'])} criteria assessed",
                 detailed_criteria_reasoning=detailed_reasoning,
-                evidence=[f"Analysis from {agent_role.value} agent: {llm_response[:200]}..."],
+                evidence=[f"Analysis from {agent_role.value} agent using structured evaluation"],
                 confidence=0.85,
-                round_number=round_number
+                round_number=round_number,
+                structured_evaluation=response_data  # Store the full structured response
             )
-
+            
         except Exception as e:
-            logger.error(f"❌ Failed to parse LLM response: {e}")
-            logger.debug(f"❌ Response was: {llm_response[:200]}...")
+            logger.error(f"❌ Failed to create evaluation from structured response: {e}")
             # Fallback to deterministic evaluation
             bias = -0.5 if agent_role == AgentRole.STRICT_EVALUATOR else 0.5
             return self._create_deterministic_evaluation(
