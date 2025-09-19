@@ -39,6 +39,7 @@ class AgentEvaluation:
     evidence: List[str]
     confidence: float
     round_number: int
+    structured_evaluation: Optional[Dict[str, Any]] = None  # Store structured JSON evaluation
 
 
 @dataclass
@@ -264,10 +265,15 @@ Definition: {criterion.get('definition', 'Score 1-5 based on evidence quality')}
             try:
                 logger.info("🚀 Making actual LLM API call to Azure OpenAI...")
                 llm_response = await self._call_llm_with_prompt(strict_prompt, "strict_agent", round_number)
-                logger.info(f"✅ LLM response received - length: {len(str(llm_response))}")
-                return await self._parse_llm_response_to_evaluation(
-                    llm_response, AgentRole.STRICT_EVALUATOR, rubric_data, round_number
-                )
+                logger.info(f"✅ LLM response received - type: {type(llm_response)}")
+                
+                # LLM response should be structured JSON, extract evaluation data
+                if isinstance(llm_response, dict) and 'evaluation' in llm_response:
+                    return self._create_evaluation_from_structured_response(
+                        llm_response, AgentRole.STRICT_EVALUATOR, rubric_data, round_number
+                    )
+                else:
+                    logger.warning("⚠️ LLM returned unexpected format, falling back to deterministic")
             except Exception as e:
                 logger.error(f"❌ LLM call failed: {e}, falling back to deterministic")
         else:
@@ -327,10 +333,15 @@ Definition: {criterion.get('definition', 'Score 1-5 based on evidence quality')}
             try:
                 logger.info("🚀 Making actual LLM API call to Azure OpenAI...")
                 llm_response = await self._call_llm_with_prompt(generous_prompt, "generous_agent", round_number)
-                logger.info(f"✅ LLM response received - length: {len(str(llm_response))}")
-                return await self._parse_llm_response_to_evaluation(
-                    llm_response, AgentRole.GENEROUS_EVALUATOR, rubric_data, round_number
-                )
+                logger.info(f"✅ LLM response received - type: {type(llm_response)}")
+                
+                # LLM response should be structured JSON, extract evaluation data
+                if isinstance(llm_response, dict) and 'evaluation' in llm_response:
+                    return self._create_evaluation_from_structured_response(
+                        llm_response, AgentRole.GENEROUS_EVALUATOR, rubric_data, round_number
+                    )
+                else:
+                    logger.warning("⚠️ LLM returned unexpected format, falling back to deterministic")
             except Exception as e:
                 logger.error(f"❌ LLM call failed: {e}, falling back to deterministic")
         else:
@@ -404,7 +415,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=original_eval.detailed_criteria_reasoning,
             evidence=original_eval.evidence,
             confidence=0.85,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=original_eval.structured_evaluation
         )
 
     async def _refine_generous_evaluation(
@@ -435,7 +447,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=original_eval.detailed_criteria_reasoning,
             evidence=original_eval.evidence,
             confidence=0.85,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=original_eval.structured_evaluation
         )
 
     def _create_deterministic_evaluation(
@@ -510,7 +523,8 @@ Be diplomatic but advocate for a more balanced view.
             detailed_criteria_reasoning=detailed_criteria_reasoning,
             evidence=evidence,
             confidence=0.8,
-            round_number=round_number
+            round_number=round_number,
+            structured_evaluation=None  # Deterministic evaluation doesn't have structured data
         )
 
     def _agents_agree(
@@ -598,11 +612,13 @@ Be diplomatic but advocate for a more balanced view.
             },
             "agent_detailed_reasoning": {
                 "agent_a_strict": {
+                    "evaluation": strict_eval.structured_evaluation if strict_eval.structured_evaluation else {"text_fallback": strict_eval.reasoning},
                     "overall_reasoning": strict_eval.reasoning,
                     "criteria_reasoning": strict_eval.detailed_criteria_reasoning,
                     "confidence": strict_eval.confidence
                 },
                 "agent_b_generous": {
+                    "evaluation": generous_eval.structured_evaluation if generous_eval.structured_evaluation else {"text_fallback": generous_eval.reasoning},
                     "overall_reasoning": generous_eval.reasoning,
                     "criteria_reasoning": generous_eval.detailed_criteria_reasoning,
                     "confidence": generous_eval.confidence
@@ -719,15 +735,24 @@ Be diplomatic but advocate for a more balanced view.
 
             duration = time.time() - start_time
 
-            # Log response details
-            response_text = str(response)
-            logger.info(f"✅ LLM Response Details:")
-            logger.info(f"   Response time: {duration:.2f}s")
-            logger.info(f"   Response length: {len(response_text)} chars")
-            logger.info(f"   Response tokens (approx): {len(response_text.split())}")
-            logger.debug(f"   Response preview: {response_text[:200]}...")
-
-            return response_text
+            # Handle response based on type - keep as dict if already structured
+            if isinstance(response, dict):
+                # Response is already a dictionary (structured JSON)
+                logger.info(f"✅ LLM Response Details (Structured JSON):")
+                logger.info(f"   Response time: {duration:.2f}s")
+                logger.info(f"   Response type: dict")
+                logger.info(f"   Response keys: {list(response.keys()) if response else 'None'}")
+                logger.debug(f"   Response preview: {str(response)[:200]}...")
+                return response
+            else:
+                # Response is text, convert to string
+                response_text = str(response)
+                logger.info(f"✅ LLM Response Details (Text):")
+                logger.info(f"   Response time: {duration:.2f}s")
+                logger.info(f"   Response length: {len(response_text)} chars")
+                logger.info(f"   Response tokens (approx): {len(response_text.split())}")
+                logger.debug(f"   Response preview: {response_text[:200]}...")
+                return response_text
 
         except Exception as e:
             logger.error(f"❌ LLM API Call Failed:")
@@ -736,136 +761,35 @@ Be diplomatic but advocate for a more balanced view.
             logger.error(f"   Error type: {type(e).__name__}")
             raise
 
-    async def _parse_llm_response_to_evaluation(
+    def _create_evaluation_from_structured_response(
         self,
-        llm_response: str,
+        response_data: Dict[str, Any],
         agent_role: AgentRole,
         rubric_data: Dict[str, Any],
         round_number: int
     ) -> AgentEvaluation:
-        """Parse LLM response into structured evaluation."""
+        """Create AgentEvaluation from structured LLM response."""
         try:
-            logger.info(f"🔍 Parsing LLM response for {agent_role.value} agent")
-            logger.debug(f"📝 Raw LLM response (first 500 chars): {llm_response[:500]}...")
-
-            # Try to parse the structured JSON response from BATCH_EVALUATION_PROMPT
-            import json
-            import re
-
-            # Clean up the response and extract JSON
-            cleaned_response = llm_response.strip()
-
-            # Find JSON content between braces
-            json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                try:
-                    evaluation_data = json.loads(json_str)
-                    logger.info("✅ Successfully parsed structured JSON response")
-                except json.JSONDecodeError as e:
-                    logger.warning(f"⚠️ JSON parsing failed: {e}, falling back to text parsing")
-                    evaluation_data = None
-            else:
-                logger.warning("⚠️ No JSON structure found, falling back to text parsing")
-                evaluation_data = None
-
+            logger.info(f"🔍 Creating evaluation from structured response for {agent_role.value} agent")
+            
             criteria_scores = {}
             detailed_reasoning = {}
-
-            if evaluation_data and 'evaluation' in evaluation_data:
-                # Parse structured evaluation response
-                logger.info("📊 Using structured evaluation data")
-                for eval_item in evaluation_data['evaluation']:
-                    criterion_name = eval_item.get('criterion_name', '')
-                    score = eval_item.get('score', 2.5)
-                    reasoning = eval_item.get('reasoning', 'No reasoning provided')
-                    evidence = eval_item.get('evidence', [])
-
-                    # Clean up the criterion name to match rubric
-                    for criterion in rubric_data.get('criteria', []):
-                        if criterion['name'].lower() == criterion_name.lower():
-                            criterion_name = criterion['name']
-                            break
-
-                    criteria_scores[criterion_name] = float(score)
-
-                    # Clean up reasoning format
-                    clean_reasoning = reasoning.replace('\\n', ' ').replace('\n', ' ')
-                    clean_reasoning = ' '.join(clean_reasoning.split())
-
-                    # Truncate gracefully
-                    if len(clean_reasoning) > 800:
-                        last_period = clean_reasoning[:800].rfind('.')
-                        if last_period > 400:
-                            clean_reasoning = clean_reasoning[:last_period + 1]
-                        else:
-                            clean_reasoning = clean_reasoning[:800].rstrip() + "..."
-
-                    detailed_reasoning[criterion_name] = clean_reasoning
-
-                # Use the raw response for overall reasoning (cleaned up)
-                overall_reasoning = cleaned_response.replace('\\n', ' ').replace('\n', ' ')
-                overall_reasoning = ' '.join(overall_reasoning.split())
-
-                if len(overall_reasoning) > 1500:
-                    last_period = overall_reasoning[:1500].rfind('.')
-                    if last_period > 800:
-                        overall_reasoning = overall_reasoning[:last_period + 1]
-                    else:
-                        overall_reasoning = overall_reasoning[:1500].rstrip() + "..."
-
-            else:
-                # Fallback to text parsing for unstructured responses
-                logger.info("📝 Using fallback text parsing")
-                overall_reasoning = cleaned_response.replace('\\n', ' ').replace('\n', ' ')
-                overall_reasoning = ' '.join(overall_reasoning.split())
-
-                if len(overall_reasoning) > 1500:
-                    last_period = overall_reasoning[:1500].rfind('.')
-                    if last_period > 800:
-                        overall_reasoning = overall_reasoning[:last_period + 1]
-                    else:
-                        overall_reasoning = overall_reasoning[:1500].rstrip() + "..."
-
-                # Try to extract scores from text
+            
+            # Process each criterion evaluation
+            for eval_item in response_data['evaluation']:
+                criterion_name = eval_item.get('criterion_name', '')
+                score = float(eval_item.get('score', 2.5))
+                reasoning = eval_item.get('reasoning', 'No reasoning provided')
+                
+                # Match criterion name to rubric
                 for criterion in rubric_data.get('criteria', []):
-                    criterion_name = criterion['name']
-
-                    # Look for score patterns in the text
-                    score_patterns = [
-                        rf"{criterion_name}.*?[sS]core.*?(\d+(?:\.\d+)?)",
-                        rf"{criterion_name}.*?[rR]ating.*?(\d+(?:\.\d+)?)",
-                        rf"{criterion_name}.*?(\d+(?:\.\d+)?)/5",
-                        rf"(\d+(?:\.\d+)?)\s*-\s*{criterion_name}",
-                    ]
-
-                    extracted_score = None
-                    for pattern in score_patterns:
-                        match = re.search(pattern, cleaned_response, re.IGNORECASE)
-                        if match:
-                            try:
-                                extracted_score = float(match.group(1))
-                                if 1 <= extracted_score <= 5:
-                                    break
-                            except (ValueError, IndexError):
-                                continue
-
-                    # If no score found, generate based on agent bias and sentiment
-                    if extracted_score is None:
-                        base_score = 2.5
-                        # Apply agent bias
-                        if agent_role == AgentRole.STRICT_EVALUATOR:
-                            score = max(1.0, base_score - 0.4)
-                        else:
-                            score = min(5.0, base_score + 0.4)
-                        extracted_score = round(score, 2)
-
-                    criteria_scores[criterion_name] = extracted_score
-
-                    # Extract reasoning for this criterion
-                    criterion_reasoning = f"Based on {agent_role.value} evaluation of candidate content"
-                    detailed_reasoning[criterion_name] = criterion_reasoning
-
+                    if criterion['name'].lower() == criterion_name.lower():
+                        criterion_name = criterion['name']
+                        break
+                
+                criteria_scores[criterion_name] = score
+                detailed_reasoning[criterion_name] = reasoning
+            
             # Ensure all criteria have scores
             for criterion in rubric_data.get('criteria', []):
                 if criterion['name'] not in criteria_scores:
@@ -875,7 +799,7 @@ Be diplomatic but advocate for a more balanced view.
                     else:
                         criteria_scores[criterion['name']] = 3.0
                     detailed_reasoning[criterion['name']] = f"Default {agent_role.value} assessment"
-
+            
             # Calculate weighted overall score
             total_weighted_score = 0
             total_weight = 0
@@ -885,26 +809,26 @@ Be diplomatic but advocate for a more balanced view.
                 score = criteria_scores.get(criterion_name, 2.5)
                 total_weighted_score += score * weight
                 total_weight += weight
-
+            
             overall_score = total_weighted_score / total_weight if total_weight > 0 else 2.5
-
-            logger.info(f"📊 Parsed evaluation - Overall score: {overall_score:.2f}")
+            
+            logger.info(f"📊 Created evaluation - Overall score: {overall_score:.2f}")
             logger.info(f"📝 Individual scores: {criteria_scores}")
-
+            
             return AgentEvaluation(
                 agent_role=agent_role,
                 overall_score=overall_score,
                 criteria_scores=criteria_scores,
-                reasoning=overall_reasoning,
+                reasoning=f"Structured {agent_role.value} evaluation with {len(response_data['evaluation'])} criteria assessed",
                 detailed_criteria_reasoning=detailed_reasoning,
                 evidence=[f"Analysis from {agent_role.value} agent using structured evaluation"],
                 confidence=0.85,
-                round_number=round_number
+                round_number=round_number,
+                structured_evaluation=response_data  # Store the full structured response
             )
-
+            
         except Exception as e:
-            logger.error(f"❌ Failed to parse LLM response: {e}")
-            logger.debug(f"❌ Response was: {llm_response[:200]}...")
+            logger.error(f"❌ Failed to create evaluation from structured response: {e}")
             # Fallback to deterministic evaluation
             bias = -0.5 if agent_role == AgentRole.STRICT_EVALUATOR else 0.5
             return self._create_deterministic_evaluation(
