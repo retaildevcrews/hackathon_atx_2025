@@ -13,9 +13,21 @@ The multi-agent evaluation system uses a **debate-style process** with two AI ag
 | **Agent A (Strict)** | Conservative Evaluator | 🔍 Focuses on gaps and weaknesses | Prevents grade inflation and ensures high standards |
 | **Agent B (Generous)** | Optimistic Evaluator | ✨ Recognizes potential and strengths | Prevents unfair penalization and recognizes potential |
 
-**Agent A (Strict)** applies rigorous standards and requires strong evidence for higher scores.
+**Agent A (Strict)** applies rigorous standards and requires strong evidence for higher scores:
 
-**Agent B (Generous)** considers growth opportunities and gives credit for partial demonstrations.
+- Apply rigorous scoring standards
+- Focus on gaps, weaknesses, and areas for improvement  
+- Require strong evidence for higher scores
+- Be conservative with scoring - only award high scores for exceptional performance
+- Look for missing elements and incomplete demonstrations
+
+**Agent B (Generous)** considers growth opportunities and gives credit for partial demonstrations:
+
+- Look for strengths and positive indicators
+- Give credit for partial demonstrations and good intentions
+- Consider context and circumstances
+- Be optimistic about candidate potential
+- Recognize effort and improvement opportunities
 
 ### 🔄 The Evaluation Process
 
@@ -69,21 +81,29 @@ graph TD
 
 ## 🤖 LLM Integration
 
+### Standardized Prompting System
+
+- Uses **BATCH_EVALUATION_PROMPT** from centralized prompts module for consistency
+- **Role-specific instructions** prepended to base prompt:
+  - **Strict Agent**: "Apply rigorous scoring standards, focus on gaps and weaknesses"
+  - **Generous Agent**: "Recognize potential and growth, give credit for partial demonstrations"
+- **Structured JSON output** format ensures consistent response parsing
+
 ### Real AI Evaluation
 
 - Uses **Azure OpenAI** for actual AI reasoning
-- Each agent gets a detailed prompt with:
-  - Role-specific instructions
+- Each agent gets a comprehensive prompt with:
+  - Role-specific behavioral instructions
+  - Standardized evaluation framework
   - Candidate content (up to 2000 characters)
-  - Rubric criteria and descriptions
-  - Evaluation guidelines
+  - Detailed rubric criteria with weights and descriptions
+  - Clear scoring guidelines and output format
 
-### Fallback System
+### Enhanced Response Processing
 
-- If LLM fails → Deterministic scoring based on:
-  - Content length analysis
-  - Keyword detection
-  - Agent-specific bias application
+- **Primary**: Parse structured JSON evaluation responses
+- **Fallback**: Extract scores and reasoning from unstructured text
+- **Deterministic backup**: Content analysis with agent-specific bias if LLM fails
 
 ## 📊 Output Structure
 
@@ -151,9 +171,10 @@ When evaluating multiple candidates on one rubric:
 
 ### Quality Assurance
 
-- **Strict agent** ensures high standards aren't compromised
-- **Generous agent** ensures fair recognition of potential
-- **Consensus requirement** forces thorough evaluation
+- **Strict agent** ensures high standards aren't compromised through rigorous evaluation criteria
+- **Generous agent** ensures fair recognition of potential and partial competencies
+- **Standardized prompting** provides consistent evaluation framework across all assessments
+- **Consensus requirement** forces thorough evaluation and balances different perspectives
 
 ### Transparency
 
@@ -163,11 +184,20 @@ When evaluating multiple candidates on one rubric:
 
 ### Consistency
 
-- **Structured process** ensures repeatable evaluations
+- **Standardized prompting** with `BATCH_EVALUATION_PROMPT` ensures uniform evaluation approach
+- **Role-specific instructions** maintain agent differentiation while using consistent base prompt
+- **Structured JSON output** provides predictable response format
 - **Weighted consensus** provides predictable outcomes
-- **Fallback systems** ensure reliability
+- **Enhanced fallback systems** ensure reliability with detailed reasoning generation
 
 ## 🔧 Configuration
+
+### Prompt Standardization
+
+- **Base Prompt**: Uses centralized `BATCH_EVALUATION_PROMPT` from prompts module
+- **Agent Customization**: Role-specific instructions prepended to maintain agent personalities
+- **Output Format**: Structured JSON with criterion_name, score, reasoning, and evidence fields
+- **Fallback Parsing**: Multiple extraction strategies for robust score retrieval
 
 ### Consensus Tolerance
 
@@ -185,20 +215,33 @@ When evaluating multiple candidates on one rubric:
 - **Generous Agent**: 40% (fairness focus)
 - **Configurable** based on evaluation context
 
-## 🚀 Performance
+### Performance
 
 ### Response Times
 
-- **LLM calls**: ~5 seconds per agent
-- **Total evaluation**: ~10-15 seconds for consensus
-- **Batch processing**: Parallel individual evaluations
+- **LLM calls**: ~3-8 seconds per agent (depending on Azure OpenAI latency)
+- **Total consensus evaluation**: ~8-15 seconds including debate rounds
+- **Batch processing**: Parallel individual evaluations for multiple candidates
 
 ### Content Analysis
 
-- **Real AI reasoning**: 300-1000+ character responses
-- **Comprehensive analysis**: Per-criterion breakdown
-- **Evidence extraction**: From candidate content
+- **Structured AI reasoning**: JSON-formatted responses with detailed criterion-by-criterion analysis
+- **Comprehensive analysis**: 500-1500+ character responses per agent
+- **Evidence extraction**: Specific examples and justifications from candidate content
+- **Fallback robustness**: Multiple parsing strategies ensure reliable score extraction
 
 ---
 
 *This system ensures fair, comprehensive, and high-quality candidate evaluations through the power of multi-agent consensus and AI-driven analysis.*
+
+## 🔄 Recent Updates
+
+### BATCH_EVALUATION_PROMPT Integration (September 2025)
+
+- **Standardized Prompting**: Migrated from custom prompts to centralized `BATCH_EVALUATION_PROMPT`
+- **Enhanced Role Instructions**: Added detailed behavioral guidelines for each agent
+- **Structured JSON Output**: Improved response parsing with structured evaluation format
+- **Robust Fallbacks**: Multiple parsing strategies ensure reliable score extraction
+- **Better LLM Integration**: Enhanced error handling and response processing
+
+This ensures consistency across all evaluation systems while maintaining the unique multi-agent consensus approach.
