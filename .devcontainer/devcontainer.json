@@ -122,6 +122,10 @@
         ]
       }
     },
+    "remoteUser": "root",
+    "mounts": [
+        "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+    ],
     "onCreateCommand": ".devcontainer/oncreate.zsh",
     "postCreateCommand": ""
   }
